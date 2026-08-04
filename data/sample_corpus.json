@@ -1,0 +1,186 @@
+[
+  {
+    "surah_number": 1, "ayah_number": 1,
+    "surah_name": {"ar": "الفاتحة", "en": "Al-Fatihah", "ur": "الفاتحہ"},
+    "text_ar": "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
+    "translation_en": "In the name of Allah, the Entirely Merciful, the Especially Merciful.",
+    "translation_ur": "شروع اللہ کا نام لے کر جو بڑا مہربان نہایت رحم والا ہے",
+    "revelation_type": "Makki", "juz": 1, "hizb": 1, "ruku": 1, "page": 1
+  },
+  {
+    "surah_number": 1, "ayah_number": 2,
+    "surah_name": {"ar": "الفاتحة", "en": "Al-Fatihah", "ur": "الفاتحہ"},
+    "text_ar": "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ",
+    "translation_en": "[All] praise is [due] to Allah, Lord of the worlds -",
+    "translation_ur": "سب طرح کی تعریف خدا ہی کو (سزاوار) ہے جو تمام مخلوقات کا پرورش کرنے والا ہے",
+    "revelation_type": "Makki", "juz": 1, "hizb": 1, "ruku": 1, "page": 1
+  },
+  {
+    "surah_number": 1, "ayah_number": 3,
+    "surah_name": {"ar": "الفاتحة", "en": "Al-Fatihah", "ur": "الفاتحہ"},
+    "text_ar": "الرَّحْمَٰنِ الرَّحِيمِ",
+    "translation_en": "The Entirely Merciful, the Especially Merciful,",
+    "translation_ur": "بڑا مہربان نہایت رحم والا",
+    "revelation_type": "Makki", "juz": 1, "hizb": 1, "ruku": 1, "page": 1
+  },
+  {
+    "surah_number": 1, "ayah_number": 4,
+    "surah_name": {"ar": "الفاتحة", "en": "Al-Fatihah", "ur": "الفاتحہ"},
+    "text_ar": "مَالِكِ يَوْمِ الدِّينِ",
+    "translation_en": "Sovereign of the Day of Recompense.",
+    "translation_ur": "انصاف کے دن کا حاکم",
+    "revelation_type": "Makki", "juz": 1, "hizb": 1, "ruku": 1, "page": 1
+  },
+  {
+    "surah_number": 1, "ayah_number": 5,
+    "surah_name": {"ar": "الفاتحة", "en": "Al-Fatihah", "ur": "الفاتحہ"},
+    "text_ar": "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ",
+    "translation_en": "It is You we worship and You we ask for help.",
+    "translation_ur": "(اے پروردگار) ہم تیری ہی عبادت کرتے ہیں اور تجھ ہی سے مدد مانگتے ہیں",
+    "revelation_type": "Makki", "juz": 1, "hizb": 1, "ruku": 1, "page": 1
+  },
+  {
+    "surah_number": 1, "ayah_number": 6,
+    "surah_name": {"ar": "الفاتحة", "en": "Al-Fatihah", "ur": "الفاتحہ"},
+    "text_ar": "اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",
+    "translation_en": "Guide us to the straight path -",
+    "translation_ur": "ہم کو سیدھے رستے چلا",
+    "revelation_type": "Makki", "juz": 1, "hizb": 1, "ruku": 1, "page": 1
+  },
+  {
+    "surah_number": 1, "ayah_number": 7,
+    "surah_name": {"ar": "الفاتحة", "en": "Al-Fatihah", "ur": "الفاتحہ"},
+    "text_ar": "صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ",
+    "translation_en": "The path of those upon whom You have bestowed favor, not of those who have earned Your anger or of those who are astray.",
+    "translation_ur": "ان لوگوں کے رستے جن پر تو اپنا فضل وکرم کرتا رہا نہ ان کے جن پر غصے ہوتا رہا اور نہ گمراہوں کے",
+    "revelation_type": "Makki", "juz": 1, "hizb": 1, "ruku": 1, "page": 1
+  },
+  {
+    "surah_number": 2, "ayah_number": 153,
+    "surah_name": {"ar": "البقرة", "en": "Al-Baqarah", "ur": "البقرہ"},
+    "text_ar": "يَا أَيُّهَا الَّذِينَ آمَنُوا اسْتَعِينُوا بِالصَّبْرِ وَالصَّلَاةِ ۚ إِنَّ اللَّهَ مَعَ الصَّابِرِينَ",
+    "translation_en": "O you who have believed, seek help through patience and prayer. Indeed, Allah is with the patient.",
+    "translation_ur": "اے اہل ایمان صبر اور نماز سے مدد لیا کرو بےشک خدا صبر کرنے والوں کے ساتھ ہے",
+    "revelation_type": "Madani", "juz": 2, "hizb": 3, "ruku": 18, "page": 23
+  },
+  {
+    "surah_number": 2, "ayah_number": 255,
+    "surah_name": {"ar": "البقرة", "en": "Al-Baqarah", "ur": "البقرہ"},
+    "text_ar": "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ",
+    "translation_en": "Allah - there is no deity except Him, the Ever-Living, the Sustainer of [all] existence. Neither drowsiness overtakes Him nor sleep. To Him belongs whatever is in the heavens and whatever is on the earth.",
+    "translation_ur": "خدا (وہ معبود برحق ہے کہ) اس کے سوا کوئی عبادت کے لائق نہیں زندہ ہمیشہ رہنے والا اسے نہ اونگھ آتی ہے نہ نیند جو کچھ آسمانوں میں اور جو کچھ زمین میں ہے سب اسی کا ہے",
+    "revelation_type": "Madani", "juz": 3, "hizb": 5, "ruku": 34, "page": 42
+  },
+  {
+    "surah_number": 15, "ayah_number": 26,
+    "surah_name": {"ar": "الحجر", "en": "Al-Hijr", "ur": "الحجر"},
+    "text_ar": "وَلَقَدْ خَلَقْنَا الْإِنْسَانَ مِنْ صَلْصَالٍ مِنْ حَمَإٍ مَسْنُونٍ",
+    "translation_en": "And We did certainly create man out of clay from an altered black mud.",
+    "translation_ur": "اور ہم نے انسان کو کھنکھناتے سڑے ہوئے گارے سے پیدا کیا",
+    "revelation_type": "Makki", "juz": 14, "hizb": 27, "ruku": 189, "page": 264
+  },
+  {
+    "surah_number": 36, "ayah_number": 58,
+    "surah_name": {"ar": "يس", "en": "Ya-Sin", "ur": "یٰسٓ"},
+    "text_ar": "سَلَامٌ قَوْلًا مِنْ رَبٍّ رَحِيمٍ",
+    "translation_en": "[And] \"Peace,\" a word from a Merciful Lord.",
+    "translation_ur": "پروردگار مہربان کی طرف سے سلام (کہا جائے گا)",
+    "revelation_type": "Makki", "juz": 23, "hizb": 45, "ruku": 445, "page": 444
+  },
+  {
+    "surah_number": 39, "ayah_number": 53,
+    "surah_name": {"ar": "الزمر", "en": "Az-Zumar", "ur": "الزمر"},
+    "text_ar": "قُلْ يَا عِبَادِيَ الَّذِينَ أَسْرَفُوا عَلَىٰ أَنْفُسِهِمْ لَا تَقْنَطُوا مِنْ رَحْمَةِ اللَّهِ ۚ إِنَّ اللَّهَ يَغْفِرُ الذُّنُوبَ جَمِيعًا ۚ إِنَّهُ هُوَ الْغَفُورُ الرَّحِيمُ",
+    "translation_en": "Say, \"O My servants who have transgressed against themselves [by sinning], do not despair of the mercy of Allah. Indeed, Allah forgives all sins. Indeed, it is He who is the Forgiving, the Merciful.\"",
+    "translation_ur": "(اے پیغمبر میری طرف سے لوگوں کو) کہہ دو کہ اے میرے بندو جنہوں نے اپنی جانوں پر زیادتی کی ہے خدا کی رحمت سے ناامید نہ ہونا خدا تو سب گناہوں کو بخش دیتا ہے وہ تو بخشنے والا مہربان ہے",
+    "revelation_type": "Makki", "juz": 24, "hizb": 47, "ruku": 462, "page": 464
+  },
+  {
+    "surah_number": 55, "ayah_number": 3,
+    "surah_name": {"ar": "الرحمن", "en": "Ar-Rahman", "ur": "الرحمٰن"},
+    "text_ar": "خَلَقَ الْإِنْسَانَ",
+    "translation_en": "Created man,",
+    "translation_ur": "اسی نے انسان کو پیدا کیا",
+    "revelation_type": "Madani", "juz": 27, "hizb": 53, "ruku": 526, "page": 531
+  },
+  {
+    "surah_number": 55, "ayah_number": 4,
+    "surah_name": {"ar": "الرحمن", "en": "Ar-Rahman", "ur": "الرحمٰن"},
+    "text_ar": "عَلَّمَهُ الْبَيَانَ",
+    "translation_en": "[And] taught him eloquence.",
+    "translation_ur": "اسے بولنا سکھایا",
+    "revelation_type": "Madani", "juz": 27, "hizb": 53, "ruku": 526, "page": 531
+  },
+  {
+    "surah_number": 96, "ayah_number": 1,
+    "surah_name": {"ar": "العلق", "en": "Al-Alaq", "ur": "العلق"},
+    "text_ar": "اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ",
+    "translation_en": "Recite in the name of your Lord who created -",
+    "translation_ur": "(اے محمدﷺ) اپنے پروردگار کا نام لے کر پڑھو جس نے (عالم کو) پیدا کیا",
+    "revelation_type": "Makki", "juz": 30, "hizb": 60, "ruku": 553, "page": 597
+  },
+  {
+    "surah_number": 96, "ayah_number": 2,
+    "surah_name": {"ar": "العلق", "en": "Al-Alaq", "ur": "العلق"},
+    "text_ar": "خَلَقَ الْإِنْسَانَ مِنْ عَلَقٍ",
+    "translation_en": "Created man from a clinging substance.",
+    "translation_ur": "جس نے انسان کو خون کی پھٹکی سے بنایا",
+    "revelation_type": "Makki", "juz": 30, "hizb": 60, "ruku": 553, "page": 597
+  },
+  {
+    "surah_number": 103, "ayah_number": 1,
+    "surah_name": {"ar": "العصر", "en": "Al-Asr", "ur": "العصر"},
+    "text_ar": "وَالْعَصْرِ",
+    "translation_en": "By time,",
+    "translation_ur": "زمانے کی قسم",
+    "revelation_type": "Makki", "juz": 30, "hizb": 60, "ruku": 556, "page": 601
+  },
+  {
+    "surah_number": 103, "ayah_number": 2,
+    "surah_name": {"ar": "العصر", "en": "Al-Asr", "ur": "العصر"},
+    "text_ar": "إِنَّ الْإِنْسَانَ لَفِي خُسْرٍ",
+    "translation_en": "Indeed, mankind is in loss,",
+    "translation_ur": "کہ انسان نقصان میں ہے",
+    "revelation_type": "Makki", "juz": 30, "hizb": 60, "ruku": 556, "page": 601
+  },
+  {
+    "surah_number": 103, "ayah_number": 3,
+    "surah_name": {"ar": "العصر", "en": "Al-Asr", "ur": "العصر"},
+    "text_ar": "إِلَّا الَّذِينَ آمَنُوا وَعَمِلُوا الصَّالِحَاتِ وَتَوَاصَوْا بِالْحَقِّ وَتَوَاصَوْا بِالصَّبْرِ",
+    "translation_en": "Except for those who have believed and done righteous deeds and advised each other to truth and advised each other to patience.",
+    "translation_ur": "مگر جو لوگ ایمان لائے اور نیک عمل کرتے رہے اور آپس میں حق (بات) کی تلقین اور صبر کی نصیحت کرتے رہے",
+    "revelation_type": "Makki", "juz": 30, "hizb": 60, "ruku": 556, "page": 601
+  },
+  {
+    "surah_number": 112, "ayah_number": 1,
+    "surah_name": {"ar": "الإخلاص", "en": "Al-Ikhlas", "ur": "الاخلاص"},
+    "text_ar": "قُلْ هُوَ اللَّهُ أَحَدٌ",
+    "translation_en": "Say, \"He is Allah, [who is] One,",
+    "translation_ur": "کہو کہ وہ (ذات پاک جس کا نام) اللہ (ہے) ایک ہے",
+    "revelation_type": "Makki", "juz": 30, "hizb": 60, "ruku": 558, "page": 604
+  },
+  {
+    "surah_number": 112, "ayah_number": 2,
+    "surah_name": {"ar": "الإخلاص", "en": "Al-Ikhlas", "ur": "الاخلاص"},
+    "text_ar": "اللَّهُ الصَّمَدُ",
+    "translation_en": "Allah, the Eternal Refuge.",
+    "translation_ur": "خدا بےنیاز ہے",
+    "revelation_type": "Makki", "juz": 30, "hizb": 60, "ruku": 558, "page": 604
+  },
+  {
+    "surah_number": 112, "ayah_number": 3,
+    "surah_name": {"ar": "الإخلاص", "en": "Al-Ikhlas", "ur": "الاخلاص"},
+    "text_ar": "لَمْ يَلِدْ وَلَمْ يُولَدْ",
+    "translation_en": "He neither begets nor is born,",
+    "translation_ur": "نہ کسی کا باپ ہے اور نہ کسی کا بیٹا",
+    "revelation_type": "Makki", "juz": 30, "hizb": 60, "ruku": 558, "page": 604
+  },
+  {
+    "surah_number": 112, "ayah_number": 4,
+    "surah_name": {"ar": "الإخلاص", "en": "Al-Ikhlas", "ur": "الاخلاص"},
+    "text_ar": "وَلَمْ يَكُنْ لَهُ كُفُوًا أَحَدٌ",
+    "translation_en": "Nor is there to Him any equivalent.\"",
+    "translation_ur": "اور کوئی اس کا ہمسر نہیں",
+    "revelation_type": "Makki", "juz": 30, "hizb": 60, "ruku": 558, "page": 604
+  }
+]
