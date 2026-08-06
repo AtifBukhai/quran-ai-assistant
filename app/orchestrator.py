@@ -16,11 +16,19 @@ from __future__ import annotations
 import uuid
 
 from .config import Settings, get_settings
+from .conversation import (
+    ConversationTurn,
+    HistoryStore,
+    build_history_store,
+    rewrite_followup,
+    trim_turns,
+)
 from .embeddings import build_embedder
 from .grounding import (
     OUT_OF_SCOPE,
     REFUSAL_LOW_CONFIDENCE,
     build_context_block,
+    build_history_preamble,
     build_user_prompt,
     confidence_gate,
     SYSTEM_PROMPT,
@@ -68,8 +76,14 @@ class Orchestrator:
             self.settings.embedding_model,
             self.settings.embedding_dim,
         )
-        self.retriever = Retriever(self.store, self.embedder)
+        self.retriever = Retriever(self.store, self.embedder, dense_weight=self.settings.dense_weight)
         self.llm = _build_llm(self.settings)
+        self.history: HistoryStore = build_history_store(
+            self.settings.conversation_backend,
+            redis_url=self.settings.redis_url,
+            ttl_seconds=self.settings.session_ttl_seconds,
+            max_turns=self.settings.max_history_turns,
+        )
 
     # --- retrieval dispatch ---------------------------------------------------
     def _retrieve(self, routed) -> list[tuple[float, dict]]:
@@ -92,9 +106,58 @@ class Orchestrator:
         return self.ask(AskRequest(query=query, mode=mode, lang=lang))  # type: ignore[arg-type]
 
     def ask(self, req: AskRequest) -> AskResponse:
+        # --- load conversation history (continuity only — never evidence) -----------------
+        history: list[ConversationTurn] = []
+        session_id = req.session_id
+        if session_id and req.use_history:
+            conv = self.history.get(session_id)
+            if conv:
+                history = trim_turns(
+                    conv.turns,
+                    max_turns=self.settings.max_history_turns,
+                    token_budget=self.settings.history_token_budget,
+                )
+
+        # --- follow-up rewrite steers RETRIEVAL ONLY --------------------------------------
+        # The model still answers the user's actual question, grounded in THIS turn's freshly
+        # retrieved verses. We only rewrite topical (keyword/semantic) queries — structural
+        # lookups (exact ref, whole surah) are self-contained and must not be perturbed.
+        retrieval_query = req.query
+        if history:
+            probe = route(req.query, req.lang or detect_language(req.query), req.filters)
+            if probe.intent in (Intent.KEYWORD, Intent.SEMANTIC):
+                retrieval_query = rewrite_followup(req.query, history)
+
+        resp = self._ask_core(req, retrieval_query=retrieval_query, history=history)
+
+        # --- record the turn (every outcome, including refusals) --------------------------
+        if session_id:
+            self.history.append(
+                session_id,
+                ConversationTurn(
+                    query=req.query,
+                    answer=resp.answer,
+                    citations=list(resp.citations),
+                    status=resp.status,
+                    language=resp.language,
+                ),
+            )
+            resp.session_id = session_id
+        return resp
+
+    def _ask_core(
+        self,
+        req: AskRequest,
+        *,
+        retrieval_query: str,
+        history: list[ConversationTurn],
+    ) -> AskResponse:
+        """The stateless grounded pipeline. ``retrieval_query`` may be a follow-up-expanded form
+        of ``req.query``; ``history`` is used only for the optional (off-by-default) prompt
+        preamble. Grounding is unchanged: answers cite only verses retrieved this turn."""
         trace_id = uuid.uuid4().hex
         language = req.lang or detect_language(req.query)
-        routed = route(req.query, language, req.filters)
+        routed = route(retrieval_query, language, req.filters)
         intent = routed.intent.value
 
         retrieved = self._retrieve(routed)
@@ -124,6 +187,15 @@ class Orchestrator:
         context_verses = [p for _, p in retrieved]
         context_block = build_context_block(context_verses)
         user_prompt = build_user_prompt(req.query, context_block)
+
+        # Optional continuity: prepend a fenced, CONTEXT-ONLY history preamble. Off by default
+        # (history_in_prompt). Even when on, the preamble is labeled "do not cite from here" and
+        # the validator still rejects any citation not retrieved this turn.
+        if self.settings.history_in_prompt and history:
+            preamble = build_history_preamble([(t.query, t.answer) for t in history])
+            if preamble:
+                user_prompt = f"{preamble}\n\n{user_prompt}"
+
         raw_answer = self.llm.generate(SYSTEM_PROMPT, user_prompt)
 
         # If the model itself refused, surface the insufficient-info refusal.

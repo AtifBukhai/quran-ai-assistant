@@ -1,0 +1,174 @@
+{
+  "description": "Labeled retrieval benchmark for the Quran assistant. Each item has a natural-language question and a set of gold verse_ids (well-known primary references on the topic). A retrieval is counted correct when a gold verse appears in the returned top-k. Gold sets are intentionally non-exhaustive: they list canonical, widely-cited verses for the topic, which is the right target for a precision/recall proxy. Extend freely — more items = a more reliable signal.",
+  "version": 1,
+  "items": [
+    {
+      "id": "patience",
+      "query": "What does the Quran say about patience?",
+      "lang": "en",
+      "gold": ["2:153", "2:155", "3:200", "103:3"]
+    },
+    {
+      "id": "anger",
+      "query": "What does Allah say about restraining anger?",
+      "lang": "en",
+      "gold": ["3:134", "42:37"]
+    },
+    {
+      "id": "parents",
+      "query": "How should we treat our parents?",
+      "lang": "en",
+      "gold": ["17:23", "17:24", "31:14", "46:15"]
+    },
+    {
+      "id": "charity",
+      "query": "Verses about charity and spending in the way of Allah",
+      "lang": "en",
+      "gold": ["2:261", "2:262", "2:274", "2:267"]
+    },
+    {
+      "id": "prayer",
+      "query": "The importance of establishing prayer",
+      "lang": "en",
+      "gold": ["2:3", "2:43", "2:238", "29:45"]
+    },
+    {
+      "id": "fasting",
+      "query": "What does the Quran say about fasting?",
+      "lang": "en",
+      "gold": ["2:183", "2:184", "2:185"]
+    },
+    {
+      "id": "hajj",
+      "query": "Verses about the pilgrimage to Mecca",
+      "lang": "en",
+      "gold": ["2:196", "3:97", "22:27"]
+    },
+    {
+      "id": "justice",
+      "query": "Does the Quran command justice and fairness?",
+      "lang": "en",
+      "gold": ["16:90", "4:58", "5:8"]
+    },
+    {
+      "id": "inheritance",
+      "query": "How is inheritance divided among children?",
+      "lang": "en",
+      "gold": ["4:11", "4:12", "4:7", "4:176"]
+    },
+    {
+      "id": "marriage",
+      "query": "What does the Quran say about marriage and spouses?",
+      "lang": "en",
+      "gold": ["30:21", "4:3", "24:32", "25:74"]
+    },
+    {
+      "id": "riba",
+      "query": "Is interest (usury) forbidden?",
+      "lang": "en",
+      "gold": ["2:275", "2:276", "2:278", "3:130"]
+    },
+    {
+      "id": "forgiveness",
+      "query": "Verses about Allah's forgiveness and mercy",
+      "lang": "en",
+      "gold": ["39:53", "42:40", "24:22", "7:199"]
+    },
+    {
+      "id": "intoxicants",
+      "query": "What does the Quran say about wine and intoxicants?",
+      "lang": "en",
+      "gold": ["2:219", "5:90", "5:91"]
+    },
+    {
+      "id": "orphans",
+      "query": "How should orphans be treated?",
+      "lang": "en",
+      "gold": ["4:2", "4:10", "93:9", "2:220"]
+    },
+    {
+      "id": "gratitude",
+      "query": "Verses about being grateful and thankful to Allah",
+      "lang": "en",
+      "gold": ["14:7", "16:114", "2:152"]
+    },
+    {
+      "id": "knowledge",
+      "query": "What does the Quran say about seeking knowledge?",
+      "lang": "en",
+      "gold": ["20:114", "39:9", "58:11", "96:1"]
+    },
+    {
+      "id": "death",
+      "query": "Every soul shall taste death",
+      "lang": "en",
+      "gold": ["3:185", "21:35", "29:57"]
+    },
+    {
+      "id": "pharaoh",
+      "query": "The punishment and drowning of Pharaoh",
+      "lang": "en",
+      "gold": ["10:90", "28:40", "7:136", "79:25"]
+    },
+    {
+      "id": "truthfulness",
+      "query": "Verses about honesty and being truthful",
+      "lang": "en",
+      "gold": ["9:119", "33:70", "33:35"]
+    },
+    {
+      "id": "backbiting",
+      "query": "What does the Quran say about backbiting and gossip?",
+      "lang": "en",
+      "gold": ["49:12"]
+    },
+    {
+      "id": "taqwa_equality",
+      "query": "Are all people equal regardless of race?",
+      "lang": "en",
+      "gold": ["49:13"]
+    },
+    {
+      "id": "business_measure",
+      "query": "Giving full measure and weight honestly in trade",
+      "lang": "en",
+      "gold": ["83:1", "83:2", "83:3", "17:35", "6:152"]
+    },
+    {
+      "id": "modesty",
+      "query": "Lowering the gaze and guarding modesty",
+      "lang": "en",
+      "gold": ["24:30", "24:31"]
+    },
+    {
+      "id": "creation",
+      "query": "The creation of the heavens and the earth",
+      "lang": "en",
+      "gold": ["21:30", "2:29", "41:11", "7:54"]
+    },
+    {
+      "id": "patience_ar",
+      "query": "الصبر",
+      "lang": "ar",
+      "gold": ["2:153", "2:155", "103:3"]
+    },
+    {
+      "id": "prayer_ar",
+      "query": "إقامة الصلاة",
+      "lang": "ar",
+      "gold": ["2:43", "2:238"]
+    },
+    {
+      "id": "parents_ur",
+      "query": "والدین کے ساتھ حسن سلوک",
+      "lang": "ur",
+      "gold": ["17:23", "31:14"]
+    },
+    {
+      "id": "charity_ur",
+      "query": "صدقہ اور خیرات",
+      "lang": "ur",
+      "gold": ["2:261", "2:274"]
+    }
+  ]
+}

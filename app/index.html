@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light dark" />
+<title>Quran AI Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Amiri+Quran&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ---------- Design tokens ---------- */
+  :root {
+    --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-ar: "Amiri Quran", "Amiri", "Scheherazade New", "Traditional Arabic", serif;
+
+    --bg: #f6f7f6;
+    --surface: #ffffff;
+    --surface-2: #f1f3f1;
+    --sidebar-bg: #eef1ef;
+    --text: #17201b;
+    --muted: #63706a;
+    --faint: #8a978f;
+    --border: #e3e7e3;
+    --accent: #0f7a57;
+    --accent-hover: #0c6547;
+    --accent-soft: #e4f3eb;
+    --ring: rgba(15, 122, 87, 0.32);
+    --gold: #b0823f;
+
+    --ok-bg: #e4f3eb; --ok-fg: #146145;
+    --warn-bg: #fbeedc; --warn-fg: #8a5316;
+    --err-bg: #fbe4e4; --err-fg: #a12626;
+
+    --shadow-sm: 0 1px 2px rgba(20, 30, 25, 0.05);
+    --shadow-md: 0 6px 24px rgba(20, 30, 25, 0.10);
+    --radius: 14px;
+    --radius-sm: 9px;
+    --sidebar-w: 268px;
+  }
+  html[data-theme="dark"] {
+    --bg: #0f1211;
+    --surface: #171a18;
+    --surface-2: #1e2320;
+    --sidebar-bg: #0b0e0c;
+    --text: #e7eae7;
+    --muted: #98a29c;
+    --faint: #71807a;
+    --border: #262c28;
+    --accent: #37c08d;
+    --accent-hover: #2fae7e;
+    --accent-soft: #12271e;
+    --ring: rgba(55, 192, 141, 0.36);
+    --gold: #d4af6a;
+
+    --ok-bg: #12271e; --ok-fg: #5fd3a2;
+    --warn-bg: #2c2416; --warn-fg: #e3b877;
+    --err-bg: #2e1a1a; --err-fg: #e39a9a;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+    --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.45);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ---------- Accessibility helpers ---------- */
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+  .skip-link {
+    position: fixed; top: -60px; left: 12px; z-index: 200;
+    background: var(--accent); color: #fff; padding: 10px 16px; border-radius: 8px;
+    text-decoration: none; font-weight: 600; transition: top .15s ease;
+  }
+  .skip-link:focus { top: 12px; }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* ---------- App shell ---------- */
+  .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; height: 100vh; height: 100dvh; }
+  .app.sidebar-collapsed { grid-template-columns: 0 1fr; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    min-width: 0; overflow: hidden;
+  }
+  .sidebar-head { padding: 16px 14px 10px; }
+  .newchat {
+    width: 100%; display: flex; align-items: center; gap: 9px; justify-content: flex-start;
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 11px 13px; font-size: .92rem; font-weight: 600; cursor: pointer;
+    font-family: inherit; box-shadow: var(--shadow-sm); transition: border-color .15s, background .15s;
+  }
+  .newchat:hover { border-color: var(--accent); color: var(--accent); }
+  .newchat .plus { font-size: 1.1rem; line-height: 1; margin-top: -1px; }
+  .sidebar-label {
+    padding: 12px 16px 6px; font-size: .72rem; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--faint);
+  }
+  .history { flex: 1; overflow-y: auto; padding: 0 8px 16px; }
+  .history-empty { padding: 8px 12px; color: var(--faint); font-size: .84rem; line-height: 1.5; }
+  .session {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    padding: 9px 10px; border-radius: var(--radius-sm); cursor: pointer;
+    color: var(--text); font-size: .88rem; border: 1px solid transparent; text-align: left;
+    background: transparent; font-family: inherit; margin-bottom: 2px;
+  }
+  .session:hover { background: var(--surface-2); }
+  .session.active { background: var(--surface); border-color: var(--border); box-shadow: var(--shadow-sm); }
+  .session .s-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .session .s-del {
+    opacity: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer;
+    padding: 2px 5px; border-radius: 6px; font-size: .95rem; line-height: 1; flex: none;
+  }
+  .session:hover .s-del, .session.active .s-del { opacity: 1; }
+  .session .s-del:hover { color: var(--err-fg); background: var(--err-bg); }
+  .sidebar-foot { padding: 10px 16px 14px; border-top: 1px solid var(--border); font-size: .74rem; color: var(--faint); }
+
+  /* ---------- Top bar ---------- */
+  .main { display: flex; flex-direction: column; min-width: 0; height: 100vh; height: 100dvh; }
+  .topbar {
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    border-bottom: 1px solid var(--border); background: var(--surface);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); cursor: pointer; flex: none;
+    font-size: 1.1rem; line-height: 1; transition: border-color .15s, background .15s;
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .brand { display: flex; flex-direction: column; line-height: 1.15; margin-right: auto; min-width: 0; }
+  .brand .b-title { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; }
+  .brand .b-duaa {
+    font-family: var(--font-ar); font-size: 1.02rem; color: var(--accent);
+    direction: rtl; margin-top: 1px; font-weight: 400;
+  }
+  .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+  .ctl { display: flex; align-items: center; gap: 6px; }
+  .ctl label { font-size: .72rem; color: var(--muted); font-weight: 500; white-space: nowrap; }
+  select {
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; font-size: .82rem;
+    background: var(--surface); color: var(--text); font-family: inherit; cursor: pointer; max-width: 190px;
+  }
+  select:hover { border-color: var(--accent); }
+
+  /* ---------- Conversation area ---------- */
+  .scroll { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+  .thread { max-width: 820px; margin: 0 auto; padding: 26px 20px 20px; }
+
+  /* Hero / empty + landing state */
+  .hero { display: flex; flex-direction: column; align-items: center; justify-content: center;
+          text-align: center; min-height: calc(100vh - 220px); min-height: calc(100dvh - 220px); padding: 20px; }
+  .hero h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+  .hero .duaa {
+    font-family: var(--font-ar); font-size: 2.5rem; color: var(--accent); direction: rtl;
+    margin: 14px 0 6px; line-height: 1.7;
+  }
+  .hero .duaa-flourish { width: 120px; height: 2px; background: linear-gradient(90deg, transparent, var(--gold), transparent); margin: 2px auto 18px; }
+  .hero .tagline { color: var(--muted); font-size: 1.02rem; max-width: 480px; margin: 0 auto 26px; }
+  .hero .attrib { margin: 26px auto 0; font-size: .78rem; color: var(--faint); }
+  .chips { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; max-width: 560px; }
+  .chip {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+    padding: 8px 15px; font-size: .87rem; color: var(--text); cursor: pointer; font-family: inherit;
+    transition: border-color .15s, color .15s, background .15s; box-shadow: var(--shadow-sm);
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip .chip-ar { font-family: var(--font-ar); font-size: 1.05rem; }
+
+  /* Messages */
+  .msg { margin-bottom: 22px; }
+  .msg-user { display: flex; justify-content: flex-end; }
+  .msg-user .bubble {
+    background: var(--accent); color: #fff; padding: 11px 16px; border-radius: 16px 16px 4px 16px;
+    max-width: 78%; font-size: .98rem; box-shadow: var(--shadow-sm); overflow-wrap: anywhere;
+  }
+  .msg-assistant .a-inner { animation: rise .28s ease both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .status {
+    display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; padding: 3px 10px; border-radius: 999px; margin-bottom: 12px;
+  }
+  .status.ok { background: var(--ok-bg); color: var(--ok-fg); }
+  .status.refused { background: var(--warn-bg); color: var(--warn-fg); }
+  .status.error { background: var(--err-bg); color: var(--err-fg); }
+
+  .answer { font-size: 1.05rem; line-height: 1.75; margin-bottom: 6px; }
+  .answer p { margin: 0 0 12px; }
+  .caret { display: inline-block; width: 8px; height: 1.05rem; margin-left: 1px;
+           background: var(--accent); vertical-align: text-bottom; border-radius: 1px; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+
+  /* Thinking dots */
+  .thinking { display: inline-flex; gap: 5px; padding: 6px 2px; }
+  .thinking span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: bounce 1.2s infinite ease-in-out; }
+  .thinking span:nth-child(2) { animation-delay: .18s; }
+  .thinking span:nth-child(3) { animation-delay: .36s; }
+  @keyframes bounce { 0%, 80%, 100% { transform: scale(.6); opacity: .5; } 40% { transform: scale(1); opacity: 1; } }
+
+  /* Refusal / error notice */
+  .notice { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; background: var(--surface); box-shadow: var(--shadow-sm); }
+  .notice.warn { border-left: 3px solid var(--warn-fg); }
+  .notice.err  { border-left: 3px solid var(--err-fg); }
+  .notice h3 { margin: 0 0 5px; font-size: .98rem; }
+  .notice p { margin: 0; color: var(--muted); font-size: .92rem; }
+  .notice .retry {
+    margin-top: 12px; background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+    padding: 8px 15px; font-size: .86rem; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .notice .retry:hover { background: var(--accent-hover); }
+
+  /* Verse cards */
+  .verse-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px;
+                margin: 14px 0; background: var(--surface); box-shadow: var(--shadow-sm); animation: rise .3s ease both; }
+  .verse-header { font-size: 1.02rem; font-weight: 600; margin-bottom: 13px; padding-bottom: 10px;
+                  border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 8px; }
+  .verse-header .vh-id { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .verse-section { margin-bottom: 12px; }
+  .verse-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); margin-bottom: 5px; }
+  .ar { font-family: var(--font-ar); font-size: 1.62rem; line-height: 2.15; direction: rtl; text-align: right; }
+  .ur { direction: rtl; text-align: right; color: var(--text); font-size: 1.05rem; }
+  .en { color: var(--text); }
+  .verse-actions { display: flex; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .vaction { display: inline-flex; align-items: center; gap: 5px; background: var(--surface-2);
+             border: 1px solid var(--border); border-radius: 8px; padding: 6px 11px; font-size: .8rem;
+             color: var(--muted); cursor: pointer; font-family: inherit; transition: all .15s ease; }
+  .vaction:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .vaction.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .vaction.playing { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .vaction .ico { font-size: .92rem; line-height: 1; }
+
+  .subhead { font-size: .9rem; color: var(--muted); margin: 20px 0 4px; font-weight: 500; }
+
+  .sources { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); font-size: .85rem; }
+  .sources-label { font-weight: 600; color: var(--accent); display: block; margin-bottom: 8px; }
+  .ref { display: inline-block; padding: 3px 9px; margin: 0 6px 6px 0; background: var(--surface);
+         border: 1px solid var(--border); border-radius: 6px; color: var(--accent); text-decoration: none;
+         font-weight: 500; font-variant-numeric: tabular-nums; transition: all .15s ease; cursor: pointer; }
+  .ref:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Concordance */
+  .concordance-summary { font-size: 1.02rem; margin-bottom: 14px; }
+  .reflist { font-size: .85rem; line-height: 1.9; margin: 12px 0 18px; padding: 12px 14px;
+             background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border); }
+  .reflist-label { font-weight: 600; color: var(--accent); margin-right: 8px; }
+  .verse-mini { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px;
+                padding: 13px 15px; margin-bottom: 11px; background: var(--surface); }
+  .verse-mini .meta { font-size: .78rem; color: var(--faint); margin-bottom: 7px; }
+  .verse-mini .meta .vid { font-weight: 700; color: var(--accent); }
+  mark { background: rgba(212, 175, 106, 0.34); color: inherit; padding: 1px 3px; border-radius: 3px; }
+  html[data-theme="dark"] mark { background: rgba(212, 175, 106, 0.26); }
+
+  /* Composer */
+  .composer-wrap { border-top: 1px solid var(--border); background: var(--surface); padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .composer { max-width: 820px; margin: 0 auto; display: flex; align-items: flex-end; gap: 10px;
+              background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+              padding: 8px 8px 8px 14px; box-shadow: var(--shadow-sm); transition: border-color .15s, box-shadow .15s; }
+  .composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+  .composer textarea {
+    flex: 1; border: 0; background: transparent; resize: none; outline: none; color: var(--text);
+    font-size: 1rem; font-family: inherit; line-height: 1.5; max-height: 180px; padding: 6px 0;
+  }
+  .composer textarea::placeholder { color: var(--faint); }
+  .send { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px;
+          border-radius: 10px; background: var(--accent); color: #fff; border: 0; cursor: pointer; flex: none; transition: background .15s; }
+  .send:hover { background: var(--accent-hover); }
+  .send:disabled { background: var(--faint); cursor: default; }
+  .send .spin { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; animation: rot .7s linear infinite; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+  .composer-hint { max-width: 820px; margin: 7px auto 0; font-size: .74rem; color: var(--faint); text-align: center; }
+
+  /* Mobile backdrop */
+  .backdrop { display: none; position: fixed; inset: 0; background: rgba(10, 15, 12, 0.42); z-index: 40; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar {
+      position: fixed; top: 0; bottom: 0; left: 0; width: var(--sidebar-w); z-index: 50;
+      transform: translateX(-100%); transition: transform .22s ease; box-shadow: var(--shadow-md);
+    }
+    body.sidebar-open .sidebar { transform: translateX(0); }
+    body.sidebar-open .backdrop { display: block; }
+    .brand .b-title { font-size: .95rem; }
+    .controls { gap: 7px; }
+    .ctl label { display: none; }
+    select { max-width: 130px; font-size: .78rem; }
+    .hero .duaa { font-size: 2rem; }
+    .hero h1 { font-size: 1.6rem; }
+  }
+  @media (min-width: 861px) { .backdrop { display: none !important; } }
+
+  /* ---------- Reduced motion ---------- */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+    .caret { animation: none; opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<a href="#main" class="skip-link">Skip to content</a>
+<div class="sr-only" id="srStatus" role="status" aria-live="polite"></div>
+<div class="backdrop" id="backdrop" aria-hidden="true"></div>
+
+<div class="app" id="app">
+  <!-- Sidebar: conversation history -->
+  <nav class="sidebar" id="sidebar" aria-label="Conversation history">
+    <div class="sidebar-head">
+      <button class="newchat" id="newChat" type="button">
+        <span class="plus" aria-hidden="true">+</span> New conversation
+      </button>
+    </div>
+    <div class="sidebar-label">History</div>
+    <div class="history" id="history"></div>
+    <div class="sidebar-foot">
+      Answers are grounded only in the Quran.<br>
+      Quran text &amp; translations created by Syed Ali.
+    </div>
+  </nav>
+
+  <!-- Main column -->
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" id="menuBtn" type="button" aria-label="Toggle history sidebar" aria-controls="sidebar" aria-expanded="true">☰</button>
+      <div class="brand">
+        <span class="b-title">Quran AI Assistant</span>
+        <span class="b-duaa" lang="ar" dir="rtl">رَبِّ زِدْنِي عِلْمًا</span>
+      </div>
+      <div class="controls">
+        <div class="ctl">
+          <label for="searchMode">Mode</label>
+          <select id="searchMode" aria-label="Search mode">
+            <option value="ask">Q&amp;A</option>
+            <option value="wordcount">Word count</option>
+          </select>
+        </div>
+        <div class="ctl">
+          <label for="mode">Show</label>
+          <select id="mode" aria-label="Which translations to show">
+            <option value="ar_en_ur">AR + EN + UR</option>
+            <option value="ar_en">AR + EN</option>
+            <option value="ar_ur">AR + UR</option>
+            <option value="ar">Arabic only</option>
+          </select>
+        </div>
+        <div class="ctl">
+          <label for="transEn">English</label>
+          <select id="transEn" aria-label="English translation"><option value="1">Sahih Int'l</option></select>
+        </div>
+        <div class="ctl">
+          <label for="transUr">Urdu</label>
+          <select id="transUr" aria-label="Urdu translation"><option value="1">Jalandhry</option></select>
+        </div>
+        <div class="ctl">
+          <label for="lang">Language</label>
+          <select id="lang" aria-label="Query language">
+            <option value="ar">Arabic</option>
+            <option value="en">English</option>
+            <option value="ur">Urdu</option>
+          </select>
+        </div>
+        <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode" aria-pressed="false">🌙</button>
+      </div>
+    </header>
+
+    <main class="scroll" id="main" tabindex="-1">
+      <div class="thread" id="thread">
+        <!-- hero / messages injected here -->
+      </div>
+    </main>
+
+    <div class="composer-wrap">
+      <form class="composer" id="composer">
+        <label for="q" class="sr-only">Ask a question about the Quran</label>
+        <textarea id="q" rows="1" placeholder="Ask a question, or type a reference like 112:1 …" autocomplete="off"></textarea>
+        <button class="send" id="send" type="submit" aria-label="Send question">
+          <span id="sendIcon" aria-hidden="true">➤</span>
+        </button>
+      </form>
+      <div class="composer-hint">Press <strong>Enter</strong> to send · <strong>Shift + Enter</strong> for a new line</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Element refs ----------
+  var thread = document.getElementById("thread");
+  var scroll = document.getElementById("main");
+  var q = document.getElementById("q");
+  var composer = document.getElementById("composer");
+  var sendBtn = document.getElementById("send");
+  var sendIcon = document.getElementById("sendIcon");
+  var searchModeSel = document.getElementById("searchMode");
+  var modeSel = document.getElementById("mode");
+  var langSel = document.getElementById("lang");
+  var transEnSel = document.getElementById("transEn");
+  var transUrSel = document.getElementById("transUr");
+  var themeBtn = document.getElementById("themeBtn");
+  var menuBtn = document.getElementById("menuBtn");
+  var backdrop = document.getElementById("backdrop");
+  var historyEl = document.getElementById("history");
+  var newChatBtn = document.getElementById("newChat");
+  var srStatus = document.getElementById("srStatus");
+
+  var REDUCE = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var LS = { sessions: "quran.sessions.v1", theme: "quran.theme", bookmarks: "quran.bookmarks" };
+
+  // ---------- State ----------
+  var currentSession = null;        // { id, title }
+  var sessions = load(LS.sessions, []);
+  var busy = false;
+
+  function load(key, dflt) { try { return JSON.parse(localStorage.getItem(key)) || dflt; } catch (e) { return dflt; } }
+  function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+  function announce(msg) { srStatus.textContent = ""; setTimeout(function () { srStatus.textContent = msg; }, 30); }
+
+  // ---------- Theme ----------
+  function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    var dark = theme === "dark";
+    themeBtn.textContent = dark ? "☀️" : "🌙";
+    themeBtn.setAttribute("aria-pressed", dark ? "true" : "false");
+    themeBtn.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
+  }
+  applyTheme(localStorage.getItem(LS.theme) || "light");  // default: light
+  themeBtn.addEventListener("click", function () {
+    var next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    localStorage.setItem(LS.theme, next);
+    applyTheme(next);
+  });
+
+  // ---------- Sidebar (mobile drawer) ----------
+  function isMobile() { return window.matchMedia("(max-width: 860px)").matches; }
+  function openSidebar() { document.body.classList.add("sidebar-open"); menuBtn.setAttribute("aria-expanded", "true"); }
+  function closeSidebar() { document.body.classList.remove("sidebar-open"); if (isMobile()) menuBtn.setAttribute("aria-expanded", "false"); }
+  menuBtn.addEventListener("click", function () {
+    if (isMobile()) {
+      document.body.classList.contains("sidebar-open") ? closeSidebar() : openSidebar();
+    } else {
+      document.getElementById("app").classList.toggle("sidebar-collapsed");
+      menuBtn.setAttribute("aria-expanded", document.getElementById("app").classList.contains("sidebar-collapsed") ? "false" : "true");
+    }
+  });
+  backdrop.addEventListener("click", closeSidebar);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && document.body.classList.contains("sidebar-open")) closeSidebar(); });
+
+  // ---------- Escaping / highlighting (ported) ----------
+  function esc(s) {
+    return (s || "").replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  function normalize(text, lang) {
+    if (lang === "ar") {
+      return text.replace(/[ؐ-ًؚ-ٰٟۖ-ۜ۟-۪ۨ-ۭـ]/g, "")
+        .replace(/[آأإ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه")
+        .replace(/\s+/g, " ").trim();
+    }
+    if (lang === "ur") { return text.replace(/\s+/g, " ").trim(); }
+    return text.toLowerCase();
+  }
+  function highlight(text, query, lang) {
+    if (!text || !query) return esc(text);
+    var normText = normalize(text, lang);
+    var normQuery = normalize(query, lang);
+    if (!normQuery || normText.indexOf(normQuery) === -1) return esc(text);
+    var parts = [];
+    var pos = 0, searchFrom = 0;
+    while ((pos = normText.indexOf(normQuery, searchFrom)) !== -1) {
+      var origStart = 0, normPos = 0, i;
+      for (i = 0; i < text.length && normPos < pos; i++) { if (normalize(text[i], lang)) normPos++; origStart = i + 1; }
+      var origEnd = origStart; normPos = pos;
+      for (i = origStart; i < text.length && normPos < pos + normQuery.length; i++) { if (normalize(text[i], lang)) normPos++; origEnd = i + 1; }
+      parts.push({ start: origStart, end: origEnd });
+      searchFrom = pos + normQuery.length;
+    }
+    if (!parts.length) return esc(text);
+    var html = "", last = 0;
+    for (var k = 0; k < parts.length; k++) {
+      html += esc(text.slice(last, parts[k].start));
+      html += "<mark>" + esc(text.slice(parts[k].start, parts[k].end)) + "</mark>";
+      last = parts[k].end;
+    }
+    html += esc(text.slice(last));
+    return html;
+  }
+  function cleanAnswer(text) {
+    if (!text) return "";
+    return text.replace(/\[\d{1,3}:\d{1,3}\]/g, "").replace(/\s{2,}/g, " ").trim();
+  }
+
+  // ---------- Translations dropdowns ----------
+  function loadTranslations() {
+    fetch("/v1/translations").then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+      if (!data) return;
+      fillSelect(transEnSel, data.english);
+      fillSelect(transUrSel, data.urdu);
+    }).catch(function () {});
+  }
+  function fillSelect(sel, items) {
+    if (!items || !items.length) return;
+    sel.innerHTML = "";
+    items.forEach(function (t) {
+      var o = document.createElement("option");
+      o.value = t.key; o.textContent = t.label; sel.appendChild(o);
+    });
+  }
+  loadTranslations();
+
+  // ---------- Verse rendering ----------
+  function verseCardHtml(ev, query, transEnIdx, transUrIdx) {
+    var p = [];
+    p.push('<div class="verse-card" id="v-' + esc(ev.verse_id) + '">');
+    var surahName = ev.surah_name ? ev.surah_name.en : "";
+    p.push('<div class="verse-header"><span class="vh-id">' + esc(ev.verse_id) + '</span><span>Surah ' + esc(surahName) + '</span></div>');
+    if (ev.text_ar) {
+      p.push('<div class="verse-section"><div class="verse-label">Arabic</div>');
+      p.push('<div class="ar" lang="ar" dir="rtl">' + highlight(ev.text_ar, query, "ar") + '</div></div>');
+    }
+    var enKey = transEnIdx === "1" ? "translation_en" : "translation_en_" + transEnIdx;
+    if (ev[enKey]) {
+      p.push('<div class="verse-section"><div class="verse-label">English</div>');
+      p.push('<div class="en" lang="en">' + highlight(ev[enKey], query, "en") + '</div></div>');
+    }
+    var urKey = transUrIdx === "1" ? "translation_ur" : "translation_ur_" + transUrIdx;
+    if (ev[urKey]) {
+      p.push('<div class="verse-section"><div class="verse-label">Urdu</div>');
+      p.push('<div class="ur" lang="ur" dir="rtl">' + highlight(ev[urKey], query, "ur") + '</div></div>');
+    }
+    p.push('<div class="verse-actions">');
+    p.push(actionBtn("copy", "📋", "Copy", ev.verse_id));
+    p.push(actionBtn("bookmark", "🔖", "Bookmark", ev.verse_id));
+    p.push(actionBtn("share", "🔗", "Share", ev.verse_id));
+    p.push(actionBtn("listen", "🔊", "Listen", ev.verse_id));
+    p.push('</div></div>');
+    return p.join("");
+  }
+  function actionBtn(action, ico, label, verse) {
+    var active = action === "bookmark" && load(LS.bookmarks, []).indexOf(verse) !== -1;
+    return '<button class="vaction' + (active ? " active" : "") + '" data-action="' + action + '" data-verse="' + esc(verse) + '" type="button" aria-label="' + label + ' verse ' + esc(verse) + '">' +
+      '<span class="ico" aria-hidden="true">' + ico + '</span> ' + (active ? "Bookmarked" : label) + '</button>';
+  }
+  function narrativeHtml(data) {
+    var n = data.evidence ? data.evidence.length : 0;
+    if (n === 0) return "";
+    var answerText = cleanAnswer(data.answer);
+    if (answerText && answerText.length > 20) return "<p>" + esc(answerText) + "</p>";
+    var first = data.evidence[0];
+    var surahName = first.surah_name ? first.surah_name.en : "";
+    var intro = n === 1
+      ? "Here is the relevant verse from the Quran:"
+      : "The Quran addresses this in " + n + " places. One of the clearest is Surah " + esc(surahName) + " (" + esc(first.verse_id) + "):";
+    return "<p>" + intro + "</p>";
+  }
+
+  // ---------- Message plumbing ----------
+  function clearHero() { var h = thread.querySelector(".hero"); if (h) h.remove(); }
+  function addUserMessage(text) {
+    clearHero();
+    var el = document.createElement("div");
+    el.className = "msg msg-user";
+    el.innerHTML = '<div class="bubble"></div>';
+    el.querySelector(".bubble").textContent = text;
+    thread.appendChild(el);
+  }
+  function addAssistantShell() {
+    var el = document.createElement("div");
+    el.className = "msg msg-assistant";
+    el.setAttribute("aria-busy", "true");
+    el.innerHTML = '<div class="a-inner">' +
+      '<div class="thinking" aria-hidden="true"><span></span><span></span><span></span></div>' +
+      '<div class="answer" aria-hidden="true"></div>' +
+      '<div class="evidence"></div>' +
+      '<div class="sources-slot"></div></div>';
+    thread.appendChild(el);
+    scrollDown();
+    return el;
+  }
+  function scrollDown() { scroll.scrollTop = scroll.scrollHeight; }
+
+  // ---------- Ask (streaming) ----------
+  function parseSSE(chunk) {
+    var event = "message", data = "";
+    chunk.split("\n").forEach(function (line) {
+      if (line.indexOf("event:") === 0) event = line.slice(6).trim();
+      else if (line.indexOf("data:") === 0) data += line.slice(5).trim();
+    });
+    if (!data) return null;
+    try { return { event: event, data: JSON.parse(data) }; } catch (e) { return null; }
+  }
+
+  function setBusy(state) {
+    busy = state;
+    sendBtn.disabled = state;
+    sendIcon.outerHTML = state
+      ? '<span class="spin" id="sendIcon" aria-hidden="true"></span>'
+      : '<span id="sendIcon" aria-hidden="true">➤</span>';
+    sendIcon = document.getElementById("sendIcon");
+  }
+
+  function ensureSession() {
+    if (currentSession) return Promise.resolve(currentSession.id);
+    return fetch("/v1/session", { method: "POST" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (d && d.session_id) {
+        currentSession = { id: d.session_id, title: null };
+        return d.session_id;
+      }
+      return null;  // grounding/continuity still works statelessly if session mint fails
+    }).catch(function () { return null; });
+  }
+
+  function registerSessionTitle(title) {
+    if (!currentSession) return;
+    if (!currentSession.title) currentSession.title = title;
+    var idx = -1;
+    for (var i = 0; i < sessions.length; i++) { if (sessions[i].id === currentSession.id) { idx = i; break; } }
+    var entry = { id: currentSession.id, title: currentSession.title || title, ts: Date.now() };
+    if (idx === -1) sessions.unshift(entry); else { sessions[idx].title = entry.title; sessions[idx].ts = entry.ts; }
+    save(LS.sessions, sessions);
+    renderHistory();
+  }
+
+  function submit(query) {
+    if (busy || !query) return;
+    if (searchModeSel.value === "wordcount") { runWordCount(query); return; }
+    setBusy(true);
+    addUserMessage(query);
+    var shell = addAssistantShell();
+    ensureSession().then(function (sid) {
+      registerSessionTitle(query);
+      if (REDUCE) { askOnce(query, sid, shell); }
+      else { streamAsk(query, sid, shell); }
+    });
+  }
+
+  function finishAssistant(shell) { shell.setAttribute("aria-busy", "false"); setBusy(false); }
+
+  function streamAsk(query, sid, shell) {
+    var answerEl = shell.querySelector(".answer");
+    var thinkingEl = shell.querySelector(".thinking");
+    var transEnIdx = transEnSel.value, transUrIdx = transUrSel.value;
+    var body = JSON.stringify({ query: query, mode: modeSel.value, session_id: sid });
+    var answerText = "", gotToken = false, meta = null, doneData = null, buffer = "";
+
+    fetch("/v1/ask/stream", { method: "POST", headers: { "content-type": "application/json" }, body: body })
+      .then(function (resp) {
+        if (!resp.ok || !resp.body) { return resp.text().then(function (t) { throw new Error("Server error " + resp.status + (t ? ": " + t : "")); }); }
+        var reader = resp.body.getReader();
+        var decoder = new TextDecoder();
+        function pump() {
+          return reader.read().then(function (res) {
+            if (res.done) { finalize(); return; }
+            buffer += decoder.decode(res.value, { stream: true });
+            var idx;
+            while ((idx = buffer.indexOf("\n\n")) !== -1) {
+              var ev = parseSSE(buffer.slice(0, idx));
+              buffer = buffer.slice(idx + 2);
+              if (!ev) continue;
+              if (ev.event === "meta") { meta = ev.data; }
+              else if (ev.event === "token") {
+                if (!gotToken) { gotToken = true; if (thinkingEl) thinkingEl.remove(); }
+                answerText += ev.data.t;
+                answerEl.innerHTML = esc(cleanAnswer(answerText)) + '<span class="caret" aria-hidden="true"></span>';
+                scrollDown();
+              } else if (ev.event === "done") { doneData = ev.data; }
+            }
+            return pump();
+          });
+        }
+        return pump();
+      })
+      .catch(function (err) { renderError(shell, query, String(err.message || err)); finishAssistant(shell); })
+      .then(function () {});
+
+    function finalize() {
+      if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
+      var data = doneData || { evidence: [], citations: [], status: (meta && meta.status) || "refused_insufficient", answer: answerText, is_refusal: true };
+      if (data.is_refusal || !data.evidence || !data.evidence.length) {
+        renderRefusal(shell, data.answer || answerText, data.status);
+      } else {
+        renderAnswered(shell, data, query, transEnIdx, transUrIdx);
+      }
+      finishAssistant(shell);
+    }
+  }
+
+  // Non-streaming path (reduced-motion, or streaming unavailable)
+  function askOnce(query, sid, shell) {
+    var transEnIdx = transEnSel.value, transUrIdx = transUrSel.value;
+    var body = JSON.stringify({ query: query, mode: modeSel.value, session_id: sid });
+    fetch("/v1/ask", { method: "POST", headers: { "content-type": "application/json" }, body: body })
+      .then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error("Server error " + r.status + (t ? ": " + t : "")); }); return r.json(); })
+      .then(function (data) {
+        var th = shell.querySelector(".thinking"); if (th) th.remove();
+        if (data.status !== "answered" || !data.evidence || !data.evidence.length) renderRefusal(shell, data.answer, data.status);
+        else renderAnswered(shell, data, query, transEnIdx, transUrIdx);
+      })
+      .catch(function (err) { renderError(shell, query, String(err.message || err)); })
+      .then(function () { finishAssistant(shell); });
+  }
+
+  function renderAnswered(shell, data, query, transEnIdx, transUrIdx) {
+    var answerEl = shell.querySelector(".answer");
+    var evEl = shell.querySelector(".evidence");
+    var srcEl = shell.querySelector(".sources-slot");
+    answerEl.removeAttribute("aria-hidden");
+    answerEl.innerHTML = narrativeHtml(data);
+    var html = verseCardHtml(data.evidence[0], query, transEnIdx, transUrIdx);
+    if (data.evidence.length > 1) {
+      html += '<div class="subhead">Other relevant verses</div>';
+      for (var i = 1; i < data.evidence.length; i++) html += verseCardHtml(data.evidence[i], query, transEnIdx, transUrIdx);
+    }
+    evEl.innerHTML = html;
+    if (data.citations && data.citations.length) {
+      srcEl.innerHTML = '<div class="sources"><span class="sources-label">Sources</span>' +
+        data.citations.map(function (c) { return '<a class="ref" href="#v-' + esc(c) + '">' + esc(c) + "</a>"; }).join("") + "</div>";
+    }
+    announce("Answered with " + data.evidence.length + " verse" + (data.evidence.length === 1 ? "" : "s") + ".");
+    scrollDown();
+  }
+
+  function renderRefusal(shell, message, status) {
+    var answerEl = shell.querySelector(".answer");
+    answerEl.removeAttribute("aria-hidden");
+    answerEl.innerHTML = "";
+    var title = status === "out_of_scope" ? "Outside the Quran" : "Not enough Quranic evidence";
+    shell.querySelector(".evidence").innerHTML =
+      '<div class="notice warn"><span class="status refused">' + esc(status || "refused") + "</span>" +
+      "<h3>" + esc(title) + "</h3><p>" + esc(message || "") + "</p></div>";
+    announce(title + ". " + (message || ""));
+    scrollDown();
+  }
+
+  function renderError(shell, query, detail) {
+    var answerEl = shell.querySelector(".answer");
+    if (answerEl) { answerEl.removeAttribute("aria-hidden"); answerEl.innerHTML = ""; }
+    var th = shell.querySelector(".thinking"); if (th) th.remove();
+    shell.querySelector(".evidence").innerHTML =
+      '<div class="notice err"><span class="status error">error</span>' +
+      "<h3>Couldn't complete that request</h3><p>" + esc(detail) + "</p>" +
+      '<button class="retry" type="button">Try again</button></div>';
+    shell.querySelector(".retry").addEventListener("click", function () {
+      shell.remove();
+      var prevUser = thread.querySelector(".msg-user:last-of-type");
+      submit(query);
+    });
+    announce("Something went wrong. " + detail);
+  }
+
+  // ---------- Word count (concordance) ----------
+  function runWordCount(term) {
+    setBusy(true);
+    addUserMessage(term);
+    var shell = addAssistantShell();
+    var th = shell.querySelector(".thinking");
+    var transEnIdx = transEnSel.value, transUrIdx = transUrSel.value;
+    fetch("/v1/wordsearch", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ term: term, lang: langSel.value }) })
+      .then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error("Server error " + r.status + (t ? ": " + t : "")); }); return r.json(); })
+      .then(function (data) {
+        if (th) th.remove();
+        renderConcordance(shell, data, term, transEnIdx, transUrIdx);
+      })
+      .catch(function (err) { renderError(shell, term, String(err.message || err)); })
+      .then(function () { finishAssistant(shell); });
+  }
+
+  function renderConcordance(shell, data, query, transEnIdx, transUrIdx) {
+    var answerEl = shell.querySelector(".answer");
+    var evEl = shell.querySelector(".evidence");
+    answerEl.removeAttribute("aria-hidden");
+    if (!data.occurrences || !data.occurrences.length) {
+      evEl.innerHTML = '<div class="notice warn"><span class="status refused">no matches</span>' +
+        '<h3>No occurrences found</h3><p>“' + esc(data.term) + '” does not appear in the selected text. Try another spelling or language.</p></div>';
+      announce("No occurrences of " + data.term + ".");
+      return;
+    }
+    answerEl.innerHTML = '<div class="concordance-summary">Found <strong>' + data.total_occurrences + "</strong> occurrence" +
+      (data.total_occurrences !== 1 ? "s" : "") + ' of “' + esc(data.term) + "” across <strong>" + data.verses_matched + "</strong> verse" +
+      (data.verses_matched !== 1 ? "s" : "") + ".</div>";
+    var html = '<div class="reflist"><span class="reflist-label">All ayahs:</span> ' +
+      data.occurrences.map(function (o) { return '<a class="ref" href="#v-' + esc(o.verse_id) + '">' + esc(o.verse_id) + "</a>"; }).join(" ") + "</div>";
+    html += data.occurrences.map(function (o) { return concordanceVerseHtml(o, query, data.language, transEnIdx, transUrIdx); }).join("");
+    evEl.innerHTML = html;
+    announce("Found " + data.total_occurrences + " occurrences across " + data.verses_matched + " verses.");
+    scrollDown();
+  }
+  function concordanceVerseHtml(occ, query, lang, transEnIdx, transUrIdx) {
+    var p = [];
+    p.push('<div class="verse-mini" id="v-' + esc(occ.verse_id) + '">');
+    p.push('<div class="meta"><span class="vid">' + esc(occ.verse_id) + "</span> · " + esc(occ.surah_name ? occ.surah_name.en : "") +
+      " · " + occ.count_in_verse + " occurrence" + (occ.count_in_verse > 1 ? "s" : "") + "</div>");
+    if (occ.text) {
+      if (lang === "ar") p.push('<div class="ar" lang="ar" dir="rtl">' + highlight(occ.text, query, "ar") + "</div>");
+      else if (lang === "ur") { var uk = transUrIdx === "1" ? "translation_ur" : "translation_ur_" + transUrIdx; p.push('<div class="ur" lang="ur" dir="rtl">' + highlight(occ[uk] || occ.text, query, "ur") + "</div>"); }
+      else { var ek = transEnIdx === "1" ? "translation_en" : "translation_en_" + transEnIdx; p.push('<div class="en" lang="en">' + highlight(occ[ek] || occ.text, query, "en") + "</div>"); }
+    }
+    p.push("</div>");
+    return p.join("");
+  }
+
+  // ---------- Sidebar history ----------
+  function renderHistory() {
+    if (!sessions.length) {
+      historyEl.innerHTML = '<div class="history-empty">No conversations yet. Ask a question to begin.</div>';
+      return;
+    }
+    historyEl.innerHTML = "";
+    sessions.forEach(function (s) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "session" + (currentSession && currentSession.id === s.id ? " active" : "");
+      btn.innerHTML = '<span class="s-title"></span><span class="s-del" role="button" aria-label="Delete conversation" title="Delete">✕</span>';
+      btn.querySelector(".s-title").textContent = s.title || "Untitled";
+      btn.addEventListener("click", function (e) {
+        if (e.target.classList.contains("s-del")) { e.stopPropagation(); deleteSession(s.id); return; }
+        openSession(s.id);
+      });
+      historyEl.appendChild(btn);
+    });
+  }
+
+  function openSession(id) {
+    if (busy) return;
+    fetch("/v1/session/" + encodeURIComponent(id))
+      .then(function (r) { if (r.status === 404) throw new Error("expired"); return r.json(); })
+      .then(function (conv) {
+        currentSession = { id: conv.session_id, title: null };
+        var found = sessions.filter(function (s) { return s.id === id; })[0];
+        if (found) currentSession.title = found.title;
+        thread.innerHTML = "";
+        (conv.turns || []).forEach(function (t) {
+          addUserMessage(t.query);
+          var shell = addAssistantShell();
+          var th = shell.querySelector(".thinking"); if (th) th.remove();
+          var ans = shell.querySelector(".answer");
+          ans.removeAttribute("aria-hidden");
+          if (t.status === "answered") {
+            var txt = cleanAnswer(t.answer);
+            ans.innerHTML = txt ? "<p>" + esc(txt) + "</p>" : "<p>Answered from the Quran.</p>";
+            if (t.citations && t.citations.length) {
+              shell.querySelector(".sources-slot").innerHTML = '<div class="sources"><span class="sources-label">Sources</span>' +
+                t.citations.map(function (c) { return '<a class="ref" data-verse="' + esc(c) + '">' + esc(c) + "</a>"; }).join("") + "</div>";
+            }
+          } else {
+            shell.querySelector(".evidence").innerHTML = '<div class="notice warn"><span class="status refused">' + esc(t.status) + "</span><p>" + esc(t.answer) + "</p></div>";
+          }
+        });
+        renderHistory();
+        if (isMobile()) closeSidebar();
+        scrollDown();
+        announce("Loaded conversation with " + (conv.turns ? conv.turns.length : 0) + " turns.");
+      })
+      .catch(function () {
+        sessions = sessions.filter(function (s) { return s.id !== id; });
+        save(LS.sessions, sessions);
+        renderHistory();
+        announce("That conversation has expired and was removed.");
+      });
+  }
+
+  function deleteSession(id) {
+    fetch("/v1/session/" + encodeURIComponent(id), { method: "DELETE" }).catch(function () {}).then(function () {
+      sessions = sessions.filter(function (s) { return s.id !== id; });
+      save(LS.sessions, sessions);
+      if (currentSession && currentSession.id === id) { currentSession = null; showHero(); }
+      renderHistory();
+    });
+  }
+
+  function newConversation() {
+    currentSession = null;
+    thread.innerHTML = "";
+    showHero();
+    renderHistory();
+    if (isMobile()) closeSidebar();
+    q.focus();
+  }
+  newChatBtn.addEventListener("click", newConversation);
+
+  // ---------- Hero / empty state ----------
+  var EXAMPLES = [
+    { label: "What does the Quran say about patience?", ar: false },
+    { label: "112:1", ar: false },
+    { label: "mercy", ar: false },
+    { label: "الرحمن", ar: true }
+  ];
+  function showHero() {
+    var chips = EXAMPLES.map(function (e) {
+      return '<button class="chip" type="button" data-ex="' + esc(e.label) + '">' + (e.ar ? '<span class="chip-ar" lang="ar" dir="rtl">' + esc(e.label) + "</span>" : esc(e.label)) + "</button>";
+    }).join("");
+    thread.innerHTML =
+      '<div class="hero">' +
+        "<h1>Quran AI Assistant</h1>" +
+        '<div class="duaa" lang="ar" dir="rtl">رَبِّ زِدْنِي عِلْمًا</div>' +
+        '<div class="duaa-flourish" aria-hidden="true"></div>' +
+        '<p class="tagline">Answers grounded only in the Quran. When the text doesn’t contain the answer, the assistant says so — plainly.</p>' +
+        '<div class="chips">' + chips + "</div>" +
+        '<p class="attrib">Quran text &amp; translations created by Syed Ali.</p>' +
+      "</div>";
+    thread.querySelectorAll(".chip").forEach(function (c) {
+      c.addEventListener("click", function () { q.value = c.getAttribute("data-ex"); autoGrow(); q.focus(); });
+    });
+  }
+
+  // ---------- Composer behavior ----------
+  function autoGrow() { q.style.height = "auto"; q.style.height = Math.min(q.scrollHeight, 180) + "px"; }
+  q.addEventListener("input", autoGrow);
+  composer.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var val = q.value.trim();
+    if (!val) { q.focus(); return; }
+    q.value = ""; autoGrow();
+    submit(val);
+  });
+  q.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); composer.requestSubmit ? composer.requestSubmit() : composer.dispatchEvent(new Event("submit", { cancelable: true })); }
+  });
+
+  // ---------- Verse action delegation (copy / bookmark / share / listen) ----------
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest ? e.target.closest(".vaction") : null;
+    if (!btn) return;
+    var action = btn.dataset.action, verseId = btn.dataset.verse;
+    if (!action || !verseId) return;
+    if (action === "copy") {
+      var card = document.getElementById("v-" + verseId);
+      if (!card) return;
+      var secs = card.querySelectorAll(".ar, .en, .ur");
+      var text = Array.prototype.map.call(secs, function (s) { return s.textContent.trim(); }).join("\n\n");
+      navigator.clipboard.writeText(text).then(function () { flash(btn, "✓", "Copied"); });
+    } else if (action === "bookmark") {
+      var marks = load(LS.bookmarks, []);
+      var idx = marks.indexOf(verseId);
+      if (idx === -1) { marks.push(verseId); btn.classList.add("active"); btn.innerHTML = '<span class="ico" aria-hidden="true">✓</span> Bookmarked'; }
+      else { marks.splice(idx, 1); btn.classList.remove("active"); btn.innerHTML = '<span class="ico" aria-hidden="true">🔖</span> Bookmark'; }
+      save(LS.bookmarks, marks);
+    } else if (action === "share") {
+      var url = window.location.origin + window.location.pathname + "?verse=" + verseId;
+      if (navigator.share) { navigator.share({ title: "Quran " + verseId, url: url }).catch(function () {}); }
+      else { navigator.clipboard.writeText(url).then(function () { flash(btn, "✓", "Link copied"); }); }
+    } else if (action === "listen") {
+      toggleAudio(btn, verseId);
+    }
+  });
+  function flash(btn, ico, label) {
+    var orig = btn.innerHTML;
+    btn.innerHTML = '<span class="ico" aria-hidden="true">' + ico + "</span> " + label;
+    setTimeout(function () { btn.innerHTML = orig; }, 1500);
+  }
+  function toggleAudio(btn, verseId) {
+    if (window.currentAudio && !window.currentAudio.paused) {
+      window.currentAudio.pause(); btn.classList.remove("playing");
+      btn.innerHTML = '<span class="ico" aria-hidden="true">🔊</span> Listen'; window.currentAudio = null; return;
+    }
+    var parts = verseId.split(":");
+    var surah = parts[0].padStart(3, "0"), ayah = parts[1].padStart(3, "0");
+    window.currentAudio = new Audio("https://everyayah.com/data/Abdul_Basit_Murattal_192kbps/" + surah + ayah + ".mp3");
+    btn.classList.add("playing"); btn.innerHTML = '<span class="ico" aria-hidden="true">⏸</span> Pause';
+    window.currentAudio.play().catch(function () { btn.classList.remove("playing"); btn.innerHTML = '<span class="ico" aria-hidden="true">🔊</span> Listen'; });
+    window.currentAudio.onended = function () { btn.classList.remove("playing"); btn.innerHTML = '<span class="ico" aria-hidden="true">🔊</span> Listen'; };
+  }
+
+  // ---------- Init ----------
+  renderHistory();
+  showHero();
+  q.focus();
+})();
+</script>
+</body>
+</html>

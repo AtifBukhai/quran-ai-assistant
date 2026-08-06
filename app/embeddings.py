@@ -61,11 +61,22 @@ class SentenceTransformerEmbedder:
         from sentence_transformers import SentenceTransformer  # noqa: PLC0415
 
         self._model = SentenceTransformer(model_name)
-        self.dim = self._model.get_sentence_embedding_dimension() or dim
+        # get_sentence_embedding_dimension() was renamed to get_embedding_dimension();
+        # fall back for older/newer versions so we don't depend on either name.
+        get_dim = getattr(
+            self._model, "get_embedding_dimension", None
+        ) or self._model.get_sentence_embedding_dimension
+        self.dim = get_dim() or dim
 
     def encode(self, texts: list[str]) -> list[list[float]]:
+        # show_progress_bar so large corpus ingests (6236 verses on CPU) are visibly moving,
+        # not apparently hung. batch_size keeps memory bounded for long multi-translation inputs.
         vecs = self._model.encode(
-            texts, normalize_embeddings=True, convert_to_numpy=True
+            texts,
+            normalize_embeddings=True,
+            convert_to_numpy=True,
+            batch_size=32,
+            show_progress_bar=True,
         )
         return [v.tolist() for v in vecs]
 

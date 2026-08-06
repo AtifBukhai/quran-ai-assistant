@@ -45,6 +45,13 @@ def _get_float(key: str, default: float) -> float:
         return default
 
 
+def _get_bool(key: str, default: bool) -> bool:
+    raw = os.environ.get(key)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
 @dataclass(frozen=True)
 class Settings:
     llm_backend: str
@@ -60,15 +67,34 @@ class Settings:
     min_score: float
     min_evidence: int
     secondary_score: float
+    dense_weight: float
+    # Conversation memory
+    conversation_backend: str
+    redis_url: str
+    session_ttl_seconds: int
+    max_history_turns: int
+    history_token_budget: int
+    history_in_prompt: bool
 
 
 @lru_cache
 def get_settings() -> Settings:
     _load_dotenv()
+    embedding_backend = _get("QURAN_EMBEDDING_BACKEND", "hash")
+    # Dense-arm weight in the SEMANTIC blend. Policy (strict, lexical-anchored grounding):
+    # vector similarity ASSISTS candidate recall/ranking but must never, on its own, clear the
+    # confidence gate — every answer stays anchored to a lexical/concept hit plus mandatory
+    # citations. So the dense weight is capped below min_score (0.30): even a perfect cosine of
+    # 1.0 contributes at most 0.25 < 0.30, and a verse with no shared/expanded term is refused.
+    # This holds for BOTH the offline hash embedder and a real neural embedder — the neural
+    # model improves *which* verses surface, not whether pure-vector matches can bypass grounding.
+    # To deliberately loosen this (allow strong vector-only matches to answer), set
+    # QURAN_DENSE_WEIGHT explicitly (e.g. 0.55); an explicit value always wins.
+    default_dense = 0.25
     return Settings(
         llm_backend=_get("QURAN_LLM_BACKEND", "echo"),
         llm_model=_get("QURAN_LLM_MODEL", "claude-3-5-sonnet-latest"),
-        embedding_backend=_get("QURAN_EMBEDDING_BACKEND", "hash"),
+        embedding_backend=embedding_backend,
         embedding_model=_get("QURAN_EMBEDDING_MODEL", "intfloat/multilingual-e5-base"),
         embedding_dim=_get_int("QURAN_EMBEDDING_DIM", 384),
         qdrant_url=_get("QURAN_QDRANT_URL", ""),
@@ -79,4 +105,12 @@ def get_settings() -> Settings:
         min_score=_get_float("QURAN_MIN_SCORE", 0.30),
         min_evidence=_get_int("QURAN_MIN_EVIDENCE", 1),
         secondary_score=_get_float("QURAN_SECONDARY_SCORE", 0.25),
+        dense_weight=_get_float("QURAN_DENSE_WEIGHT", default_dense),
+        # Conversation memory: default to in-memory with strict grounding (history_in_prompt off).
+        conversation_backend=_get("QURAN_CONVERSATION_BACKEND", "memory"),
+        redis_url=_get("QURAN_REDIS_URL", ""),
+        session_ttl_seconds=_get_int("QURAN_SESSION_TTL_SECONDS", 3600),
+        max_history_turns=_get_int("QURAN_MAX_HISTORY_TURNS", 10),
+        history_token_budget=_get_int("QURAN_HISTORY_TOKEN_BUDGET", 2000),
+        history_in_prompt=_get_bool("QURAN_HISTORY_IN_PROMPT", False),
     )

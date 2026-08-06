@@ -68,7 +68,8 @@ python -m app.ingest.run --source data/sample_corpus.json
 
 # 5. Serve
 uvicorn app.main:app --reload
-# -> http://localhost:8000/docs
+# -> http://localhost:8000/       web UI (text box + Ask button)
+# -> http://localhost:8000/docs   interactive API docs
 ```
 
 ### Run fully offline (no Qdrant server, no API key)
@@ -81,6 +82,24 @@ python -m app.ingest.run --source data/sample_corpus.json   # in-memory store
 pytest -q                                                    # grounding tests pass offline
 ```
 
+### Ask from the command line (no server)
+
+Once a corpus is ingested, query the full pipeline directly:
+
+```bash
+python -m app.ask "What does the Quran say about patience?"
+python -m app.ask "Recite verse 112:1" --mode ar_en
+python -m app.ask --json "who created the heavens"
+```
+
+`--mode` chooses which translations to show (`ar`, `ar_en`, `ar_ur`, `ar_en_ur`; Arabic is
+always shown), `--lang` forces the query language, and `--json` prints the raw `AskResponse`.
+The command exits `0` on a grounded answer and `1` on any refusal, so it is scriptable.
+
+> Note: with the in-memory Qdrant client, each process starts with an empty store — the CLI is
+> most useful against a **persisted** Qdrant server (`docker compose up -d qdrant`) so the
+> ingested corpus is still there when you ask.
+
 ---
 
 ## Example
@@ -88,9 +107,7 @@ pytest -q                                                    # grounding tests p
 ```bash
 curl -s localhost:8000/v1/ask -H 'content-type: application/json' \
   -d '{"query":"Who created mankind?","mode":"ar_en_ur"}' | jq
-```
-
-```jsonc
+``````jsonc
 {
   "status": "answered",
   "language": "en",
@@ -138,6 +155,7 @@ app/
   validator.py         # deterministic post-generation guardrails
   orchestrator.py      # the full pipeline
   main.py              # FastAPI app + endpoints
+  ask.py               # command-line query interface (no server)
   ingest/
     run.py             # CLI entry
     tanzil.py          # full-corpus builder from Tanzil files
@@ -152,4 +170,4 @@ pyproject.toml
 
 ## License
 
-Code: MIT. Quran text & translations: Tanzil Project, CC BY 3.0 (attribution required).
+Code: MIT. Quran text & translations:Tanzil Project, CC BY 3.0 (attribution required).

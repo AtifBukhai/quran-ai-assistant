@@ -45,7 +45,9 @@ def validate_invariants(verses: list[Verse], *, full: bool) -> None:
 
 
 def to_payload(v: Verse) -> dict:
-    return {
+    from ..models import normalize_urdu  # noqa: PLC0415
+
+    payload = {
         "verse_id": v.verse_id,
         "surah_number": v.surah_number,
         "ayah_number": v.ayah_number,
@@ -65,6 +67,18 @@ def to_payload(v: Verse) -> dict:
         "translation_ur_normalized": v.translation_ur_normalized,
         "checksum": v.checksum,
     }
+
+    # Add extra translation fields and their normalized versions
+    raw_dict = v.model_dump()
+    for key, val in raw_dict.items():
+        if key.startswith("translation_en_") and key not in payload:
+            payload[key] = val
+            payload[f"{key}_lower"] = val.lower() if val else ""
+        elif key.startswith("translation_ur_") and key not in payload:
+            payload[key] = val
+            payload[f"{key}_normalized"] = normalize_urdu(val) if val else ""
+
+    return payload
 
 
 def ingest(source: Path, *, recreate: bool, full: bool) -> int:

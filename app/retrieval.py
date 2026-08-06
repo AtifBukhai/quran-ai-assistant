@@ -6,20 +6,25 @@ Intents:
 * KEYWORD    — "mercy"/"الرحمن" -> lexical scan over the language-appropriate field
 * SEMANTIC   — a question       -> dense vector search, blended with lexical overlap
 
-The SEMANTIC score is a calibrated blend: lexical overlap in the query's own language is the
-primary, well-scaled signal, and dense cosine is a capped refinement. A verse supported by dense
-similarity alone can never clear the confidence gate, so out-of-scope questions — which share no
-vocabulary with any verse — are refused deterministically instead of latching onto a spurious
-nearest neighbour. ``reciprocal_rank_fusion`` is retained as a utility for rank-only fusion.
+The SEMANTIC score is a calibrated hybrid blend: Okapi BM25 (IDF + TF-saturation + length
+normalization) over the query's own language is the primary, well-scaled lexical signal, and
+multilingual-e5 dense cosine is a capped refinement that widens/reorders candidates. Dense
+similarity alone can never clear the confidence gate (its weighted share stays below min_score),
+so semantic hits are *candidates*, not automatic evidence, and out-of-scope questions — which
+share no vocabulary with any verse — are refused deterministically instead of latching onto a
+spurious nearest neighbour. Concept/synonym expansion adds a small, capped bonus for related
+terms across AR/EN/UR. ``reciprocal_rank_fusion`` is retained as a utility for rank-only fusion.
 """
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
 
+from .concepts import expand_terms
 from .embeddings import Embedder
 from .models import normalize_arabic, normalize_urdu, parse_verse_id
 from .vectorstore import VectorStore, build_filter
@@ -47,6 +52,19 @@ _TOKEN_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
 def _tokenize(text: str) -> list[str]:
     """Split normalized text into word tokens, dropping 1-2 char noise tokens."""
     return [t for t in _TOKEN_RE.findall(text) if len(t) > 2]
+
+
+# Per-hit credit for a concept-expanded (synonym) match. Small, so a verse matched only
+# through expansion needs multiple related terms to approach the weight of one literal hit,
+# and expansion never lets an off-topic verse clear the confidence gate on its own.
+_EXPANSION_WEIGHT = 0.15
+
+# --- BM25 parameters (Okapi BM25) --------------------------------------------
+# k1 controls term-frequency saturation: additional occurrences of a term help less and less.
+# b controls document-length normalization: 1.0 = full normalization, 0 = none. These are the
+# standard Okapi defaults and work well for short documents like single verses.
+_BM25_K1 = 1.5
+_BM25_B = 0.75
 
 
 # High-frequency function words across EN / AR / UR that carry no topical signal. Kept short
@@ -117,19 +135,127 @@ def route(query: str, language: str, filters: Optional[dict] = None) -> RoutedQu
             Intent.SURAH, language, q, surah_term=ms.group(2).strip(), filters=filters
         )
 
-    tokens = q.split()
-    is_short = len(tokens) <= 3
     has_question = bool(_QUESTION_MARKERS.search(q.lower()))
-    if is_short and not has_question:
+    # KEYWORD is for a single meaningful term ('mercy', 'الرحمن') where exact substring match is
+    # the right tool. Multi-word phrases ('women inheritance', 'punishment of pharaoh') go to
+    # SEMANTIC so per-token lexical overlap + concept expansion apply, rather than trying to
+    # match the whole phrase as one substring.
+    meaningful = [t for t in _tokenize(_normalize_for_route(q, language)) if t not in _STOPWORDS]
+    if len(meaningful) <= 1 and not has_question:
         return RoutedQuery(Intent.KEYWORD, language, q, filters=filters)
 
     return RoutedQuery(Intent.SEMANTIC, language, q, filters=filters)
 
 
+def _normalize_for_route(query: str, language: str) -> str:
+    """Language-appropriate normalization used only for token counting during routing."""
+    if language == "ar":
+        return normalize_arabic(query)
+    if language == "ur":
+        return normalize_urdu(query)
+    return query.lower()
+
+
+class BM25Index:
+    """Okapi BM25 over the corpus, one index per language field.
+
+    Built lazily from the vector store's payloads and cached. Provides IDF-weighted, TF-
+    saturated, length-normalized scoring — the real lexical signal that replaces flat token-
+    overlap. Scores are returned in an absolute [0,1] band (see ``score``) so a verse sharing no
+    query vocabulary scores 0 and is refused by the confidence gate, exactly as before.
+    """
+
+    def __init__(self, docs: list[tuple[str, list[str]]]) -> None:
+        # docs: list of (verse_id, token_list) for one language field.
+        self.n_docs = len(docs)
+        self.doc_len: dict[str, int] = {}
+        self.doc_tf: dict[str, dict[str, int]] = {}
+        df: dict[str, int] = {}
+        total_len = 0
+        for vid, tokens in docs:
+            self.doc_len[vid] = len(tokens)
+            total_len += len(tokens)
+            tf: dict[str, int] = {}
+            for t in tokens:
+                tf[t] = tf.get(t, 0) + 1
+            self.doc_tf[vid] = tf
+            for t in tf:
+                df[t] = df.get(t, 0) + 1
+        self.avg_len = (total_len / self.n_docs) if self.n_docs else 0.0
+        # Okapi IDF with +1 smoothing so it is always positive (no negative term weights).
+        self.idf: dict[str, float] = {
+            t: math.log(1 + (self.n_docs - n + 0.5) / (n + 0.5)) for t, n in df.items()
+        }
+        self._max_idf = max(self.idf.values()) if self.idf else 1.0
+
+    def _term_score(self, term: str, vid: str) -> float:
+        tf = self.doc_tf.get(vid, {}).get(term, 0)
+        if tf == 0:
+            return 0.0
+        idf = self.idf.get(term, 0.0)
+        dl = self.doc_len.get(vid, 0)
+        denom = tf + _BM25_K1 * (1 - _BM25_B + _BM25_B * (dl / self.avg_len if self.avg_len else 1))
+        return idf * (tf * (_BM25_K1 + 1)) / denom
+
+    def score(self, vid: str, query_terms: list[str]) -> float:
+        """Absolute BM25 score in [0,1].
+
+        Normalized against the ideal where every query term is present at TF saturation, so the
+        score reflects *how much of the query this verse covers*, not just its rank. A verse with
+        no query terms scores 0 (→ refused by the gate); full coverage approaches 1.0.
+        """
+        if not query_terms:
+            return 0.0
+        got = sum(self._term_score(t, vid) for t in query_terms)
+        # Ideal per-term contribution at saturation (dl == avg_len): idf * (k1+1).
+        ideal = sum((self.idf.get(t, self._max_idf)) * (_BM25_K1 + 1) for t in query_terms)
+        return min(1.0, got / ideal) if ideal else 0.0
+
+
 class Retriever:
-    def __init__(self, store: VectorStore, embedder: Embedder) -> None:
+    def __init__(
+        self, store: VectorStore, embedder: Embedder, *, dense_weight: float | None = None
+    ) -> None:
         self.store = store
         self.embedder = embedder
+        # Blend weights for the SEMANTIC score (see note below). ``dense_weight`` lets the
+        # caller raise the dense arm when a real neural embedder is in use; it defaults to the
+        # strict lexical-first policy suited to the offline hash embedder.
+        if dense_weight is not None:
+            dw = max(0.0, min(1.0, dense_weight))
+            self._W_DENSE = dw
+            self._W_LEXICAL = 1.0 - dw
+        # Lazily-built BM25 indexes, one per language ('ar' | 'en' | 'ur'), cached after first use.
+        self._bm25: dict[str, BM25Index] = {}
+
+    # --- lexical (BM25) index -------------------------------------------------
+    def _verse_tokens(self, pl: dict[str, Any], language: str) -> list[str]:
+        """All searchable tokens for a verse in one language: base field + extra translations.
+
+        Mirrors the field-gathering used elsewhere so BM25 and the concept arm see the same text.
+        """
+        toks = _tokenize(str(pl.get(self._field_for(language), "")))
+        if language == "en":
+            for key, val in pl.items():
+                if key.startswith("translation_en_") and key.endswith("_lower") and key != "translation_en_lower":
+                    toks.extend(_tokenize(str(val)))
+        elif language == "ur":
+            for key, val in pl.items():
+                if key.startswith("translation_ur_") and key.endswith("_normalized") and key != "translation_ur_normalized":
+                    toks.extend(_tokenize(str(val)))
+        return toks
+
+    def _bm25_index(self, language: str) -> BM25Index:
+        idx = self._bm25.get(language)
+        if idx is None:
+            docs = [
+                (pl["verse_id"], self._verse_tokens(pl, language))
+                for pl in self._all_points()
+                if pl.get("verse_id")
+            ]
+            idx = BM25Index(docs)
+            self._bm25[language] = idx
+        return idx
 
     # --- per-intent retrieval -------------------------------------------------
     def exact(self, ref: tuple[int, int]) -> list[tuple[float, dict[str, Any]]]:
@@ -179,48 +305,126 @@ class Retriever:
         return [p.payload or {} for p in points]
 
     def keyword(self, query: str, language: str, limit: int) -> list[tuple[float, dict[str, Any]]]:
-        """Exact-phrase / substring keyword search (KEYWORD intent, e.g. 'mercy', 'الرحمن')."""
+        """Exact-phrase / substring keyword search (KEYWORD intent, e.g. 'mercy', 'الرحمن').
+
+        Also applies offline concept expansion so a single topical word — 'justice',
+        'marriage', 'parents' — surfaces verses using related terms and their AR/UR
+        equivalents, not only the literal string. Literal substring matches always rank
+        first; expansion matches fill in below them.
+        """
         needle = self._normalize_query(query, language)
         field_name = self._field_for(language)
+
+        # Concept-expanded related terms (across scripts) for topical recall.
+        base_tokens = [
+            t for t in _tokenize(needle) if t not in _STOPWORDS
+        ]
+        expanded = expand_terms(base_tokens) - set(base_tokens) if base_tokens else set()
+
         scored: list[tuple[float, dict[str, Any]]] = []
         for pl in self._all_points():
+            # Search base field
             hay = str(pl.get(field_name, ""))
-            if needle and needle in hay:
-                tf = hay.count(needle)
-                scored.append((min(1.0, 0.5 + 0.1 * tf), pl))
+            matches = hay.count(needle) if needle and needle in hay else 0
+
+            # Search extra translation fields (translation_en_2_lower, translation_ur_2_normalized, etc.)
+            if language == "en":
+                for key in pl:
+                    if key.startswith("translation_en_") and key.endswith("_lower") and key != "translation_en_lower":
+                        extra_hay = str(pl.get(key, ""))
+                        if needle and needle in extra_hay:
+                            matches += extra_hay.count(needle)
+            elif language == "ur":
+                for key in pl:
+                    if key.startswith("translation_ur_") and key.endswith("_normalized") and key != "translation_ur_normalized":
+                        extra_hay = str(pl.get(key, ""))
+                        if needle and needle in extra_hay:
+                            matches += extra_hay.count(needle)
+
+            if matches > 0:
+                scored.append((min(1.0, 0.5 + 0.1 * matches), pl))
+                continue
+
+            # No literal hit — try concept expansion (token-level, incl. Arabic text).
+            if expanded:
+                hay_tokens = set(_tokenize(str(pl.get(field_name, ""))))
+                ar_tokens = set(_tokenize(str(pl.get("text_ar_normalized", ""))))
+                exp_hits = sum(1 for t in expanded if t in hay_tokens or t in ar_tokens)
+                if exp_hits:
+                    scored.append((min(0.5, _EXPANSION_WEIGHT * exp_hits), pl))
         scored.sort(key=lambda r: r[0], reverse=True)
         return scored[:limit]
 
     def lexical_overlap(
         self, query: str, language: str, limit: int
     ) -> list[tuple[float, dict[str, Any]]]:
-        """Token-overlap lexical search — the reliable lexical arm of SEMANTIC retrieval.
+        """BM25 lexical search — the reliable, dominant lexical arm of SEMANTIC retrieval.
 
-        Scores verses by the fraction of meaningful query tokens they contain, so a question
-        like "what does the quran say about patience?" surfaces verses mentioning 'patience'
-        even when dense embeddings are weak (e.g. the offline hash embedder).
+        Uses Okapi BM25 (IDF weighting + TF saturation + length normalization) so a rare,
+        topical query term contributes far more than a common one, and a verse is not rewarded
+        for merely being long. This is the real lexical signal; it replaces the earlier flat
+        token-overlap fraction. Scores are absolute in [0,1] (coverage of the query), so a verse
+        sharing no query vocabulary scores 0 and is refused by the confidence gate — out-of-scope
+        questions still fail deterministically rather than latching onto a nearest neighbour.
+
+        Concept expansion (offline, no model) adds *related* terms — e.g. 'anger' also matches
+        verses about 'wrath'/'rage' and their Arabic/Urdu equivalents. The BM25 score over the
+        literal query terms is the primary signal; expansion-only hits add a small, capped bonus
+        so a verse matched purely through a synonym ranks below one containing the literal term.
+        The method name is retained for call-site compatibility.
         """
-        field_name = self._field_for(language)
-        tokens = [t for t in _tokenize(self._normalize_query(query, language)) if t not in _STOPWORDS]
-        if not tokens:
+        base_tokens = [
+            t for t in _tokenize(self._normalize_query(query, language)) if t not in _STOPWORDS
+        ]
+        if not base_tokens:
             return []
+        base_set = set(base_tokens)
+        # Related concept terms (across scripts) minus the literal query tokens.
+        expanded = expand_terms(base_tokens) - base_set
+
+        bm25 = self._bm25_index(language)
+
         scored: list[tuple[float, dict[str, Any]]] = []
         for pl in self._all_points():
-            hay_tokens = set(_tokenize(str(pl.get(field_name, ""))))
-            matched = sum(1 for t in tokens if t in hay_tokens)
-            if matched:
-                scored.append((matched / len(tokens), pl))
+            vid = pl.get("verse_id")
+            if not vid:
+                continue
+            # Primary lexical signal: BM25 over the literal query terms.
+            base_score = bm25.score(vid, base_tokens)
+
+            # Additive, capped concept-expansion bonus. Expansion terms are checked against the
+            # verse's own-language tokens and (always) the Arabic text, so cross-script synonyms
+            # match. Kept small so expansion lifts recall/ranking but never dominates a literal hit.
+            exp_frac = 0.0
+            if expanded:
+                hay_tokens = set(self._verse_tokens(pl, language))
+                ar_tokens = set(_tokenize(str(pl.get("text_ar_normalized", ""))))
+                exp_hits = sum(1 for t in expanded if t in hay_tokens or t in ar_tokens)
+                exp_frac = min(0.5, _EXPANSION_WEIGHT * exp_hits)
+
+            score = min(1.0, base_score + exp_frac)
+            if score > 0:
+                scored.append((score, pl))
         scored.sort(key=lambda r: r[0], reverse=True)
         return scored[:limit]
 
-    # Blend weights for the semantic score. Lexical overlap (matched in the query's own
-    # language against the verse's own-language translation) is the reliable, calibrated
-    # signal and dominates. Dense cosine only refines ranking and adds recall — it is capped
-    # so that a verse supported by dense similarity ALONE can never clear the confidence gate
+    # Default blend weights for the semantic score (used when the caller does not override
+    # them via ``dense_weight``). Lexical overlap — matched in the query's own language against
+    # the verse's own-language translation — is the reliable, calibrated signal and dominates.
+    # With the offline hash embedder, dense cosine only refines ranking and adds recall, and is
+    # capped so a verse supported by dense similarity ALONE cannot clear the confidence gate
     # (max dense contribution 0.25 < default min_score 0.30). This makes out-of-scope queries,
     # which share no vocabulary with any verse, refuse deterministically rather than latch onto
-    # a spurious nearest neighbour. It is also the correct conservative policy for a strictly
-    # grounded assistant: an answer must be lexically anchored in the cited verse.
+    # a spurious nearest neighbour.
+    #
+    # A real multilingual neural embedder improves *which* verses surface (recall + ranking),
+    # but the dense weight stays capped below the gate for it too: semantic similarity assists
+    # retrieval, it does not replace grounding. A verse matched by vector similarity alone —
+    # 'anger' -> a verse about 'wrath' with no shared or concept-expanded token — is still
+    # refused, so every answer remains anchored to a lexical/concept hit plus mandatory
+    # citations. (Set QURAN_DENSE_WEIGHT explicitly to deliberately loosen this.) Grounding is
+    # further enforced downstream: the validator re-renders cited verse text from the canonical
+    # corpus, so the model can never invent or alter it.
     _W_LEXICAL = 0.75
     _W_DENSE = 0.25
 

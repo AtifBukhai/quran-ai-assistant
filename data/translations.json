@@ -1,0 +1,51 @@
+{
+  "english": [
+    {
+      "key": "1",
+      "label": "Sahih International (primary)",
+      "filename": "en.sahih.txt"
+    },
+    {
+      "key": "2",
+      "label": "Ahmedraza",
+      "filename": "translation_en_2"
+    },
+    {
+      "key": "3",
+      "label": "Maududi",
+      "filename": "translation_en_3"
+    },
+    {
+      "key": "4",
+      "label": "Wahiduddin",
+      "filename": "translation_en_4"
+    }
+  ],
+  "urdu": [
+    {
+      "key": "1",
+      "label": "Jalandhry (primary)",
+      "filename": "ur.jalandhry.txt"
+    },
+    {
+      "key": "2",
+      "label": "Junagarhi",
+      "filename": "translation_ur_2"
+    },
+    {
+      "key": "3",
+      "label": "Kanz-ul-Iman",
+      "filename": "translation_ur_3"
+    },
+    {
+      "key": "4",
+      "label": "Maududi",
+      "filename": "translation_ur_4"
+    },
+    {
+      "key": "5",
+      "label": "Qadri",
+      "filename": "translation_ur_5"
+    }
+  ]
+}

@@ -87,6 +87,29 @@ def build_user_prompt(question: str, context_block: str) -> str:
     )
 
 
+def build_history_preamble(pairs: list[tuple[str, str]]) -> str:
+    """Render prior turns as *conversational context only* — explicitly NOT evidence.
+
+    ``pairs`` is a list of ``(user_question, assistant_answer)`` for recent turns. This preamble is
+    only ever included when ``history_in_prompt`` is enabled; even then it is fenced off and
+    labeled so the model treats it as continuity, not as a source of facts. Grounding is still
+    enforced downstream: the answer must cite verses from THIS turn's retrieved context, and the
+    validator rejects any citation that was not retrieved this turn.
+    """
+    if not pairs:
+        return ""
+    lines = [
+        "Conversation so far (CONTEXT ONLY — do NOT treat as evidence, do NOT cite from here;",
+        "cite only the retrieved verses provided below):",
+        "==========================================================",
+    ]
+    for i, (q, a) in enumerate(pairs, start=1):
+        lines.append(f"Turn {i} — User: {q}")
+        lines.append(f"Turn {i} — Assistant: {a}")
+    lines.append("==========================================================")
+    return "\n".join(lines)
+
+
 # --- Confidence gate (Layer 3) ------------------------------------------------
 @dataclass
 class GateResult:

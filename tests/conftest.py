@@ -35,6 +35,13 @@ def _offline_settings() -> Settings:
         min_score=0.30,
         min_evidence=1,
         secondary_score=0.25,
+        dense_weight=0.25,  # strict lexical-first for hash embedder
+        conversation_backend="memory",
+        redis_url="",
+        session_ttl_seconds=3600,
+        max_history_turns=10,
+        history_token_budget=2000,
+        history_in_prompt=False,  # strict: history never enters the generation prompt by default
     )
 
 

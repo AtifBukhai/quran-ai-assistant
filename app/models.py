@@ -48,7 +48,17 @@ def normalize_arabic(text: str) -> str:
 
 
 def normalize_urdu(text: str) -> str:
-    return re.sub(r"\s+", " ", text).strip()
+    """Normalize Urdu-specific letter variants to Arabic equivalents for cross-script matching."""
+    # Map Urdu keyboard variants to their closest Arabic/shared form so queries typed with
+    # Urdu IME match the Arabic Uthmani text and vice versa.
+    normalized = (
+        text.replace("ہ", "ه")  # Urdu heh (U+06C1) -> Arabic heh (U+0647)
+        .replace("ھ", "ه")  # Urdu heh goal (U+06BE) -> Arabic heh
+        .replace("ی", "ي")  # Urdu yeh (U+06CC) -> Arabic yeh (U+064A)
+        .replace("ے", "ي")  # Urdu yeh barree (U+06D2) -> Arabic yeh
+        .replace("ک", "ك")  # Arabic keheh (U+06A9) -> Arabic kaf (U+0643)
+    )
+    return re.sub(r"\s+", " ", normalized).strip()
 
 
 class SurahName(BaseModel):
@@ -59,6 +69,7 @@ class SurahName(BaseModel):
 
 class Verse(BaseModel):
     """One ayah = one document = one vector point. Never merged with another verse."""
+    model_config = {"extra": "allow"}  # Allow extra translation fields
 
     surah_number: int = Field(ge=1, le=TOTAL_SURAHS)
     ayah_number: int = Field(ge=1)
@@ -116,11 +127,20 @@ class Verse(BaseModel):
         return hashlib.sha256(self.text_ar.encode("utf-8")).hexdigest()
 
     def embedding_source(self) -> str:
-        """The single multilingual string that gets embedded (audit-friendly)."""
-        return (
-            f"[AR] {self.text_ar}  "
-            f"[EN] {self.translation_en}  "
-            f"[UR] {self.translation_ur}"
+        """The single multilingual string that gets embedded (audit-friendly).
+
+        Only the primary AR/EN/UR triple is embedded. Extra translations (Maududi, Qadri,
+        Yusuf Ali, ...) are deliberately excluded: they are near-duplicates that dilute the
+        semantic signal and, stacked together, overflow the encoder's token window (truncating
+        the tail). Those translations remain fully searchable via the lexical/concept path
+        (payload fields) and are shown in the UI — nothing is lost for retrieval or display.
+        """
+        return "  ".join(
+            [
+                f"[AR] {self.text_ar}",
+                f"[EN] {self.translation_en}",
+                f"[UR] {self.translation_ur}",
+            ]
         )
 
 
@@ -148,6 +168,8 @@ LanguageMode = Literal["ar", "ar_en", "ar_ur", "ar_en_ur"]
 
 
 class EvidenceVerse(BaseModel):
+    model_config = {"extra": "allow"}  # Allow extra translation fields
+
     verse_id: str
     surah_number: int
     ayah_number: int
@@ -165,6 +187,8 @@ class AskRequest(BaseModel):
     lang: Optional[Literal["ar", "en", "ur"]] = None  # auto-detected if omitted
     mode: LanguageMode = "ar_en_ur"
     filters: Optional[dict] = None  # e.g. {"revelation_type": "Makki", "surah_number": 2}
+    session_id: Optional[str] = None  # opt-in conversation memory; omit for a stateless turn
+    use_history: bool = True  # when a session_id is given, use prior turns for continuity
 
 
 class AskResponse(BaseModel):
@@ -175,6 +199,7 @@ class AskResponse(BaseModel):
     evidence: list[EvidenceVerse] = Field(default_factory=list)
     citations: list[str] = Field(default_factory=list)
     trace_id: str
+    session_id: Optional[str] = None  # echoed back when the turn was recorded in a session
 
     @property
     def is_refusal(self) -> bool:

@@ -31,20 +31,27 @@ class ValidationResult:
 
 def _to_evidence(payload: dict, score: float) -> EvidenceVerse:
     names = payload.get("surah_name", {})
-    return EvidenceVerse(
-        verse_id=payload["verse_id"],
-        surah_number=payload["surah_number"],
-        ayah_number=payload["ayah_number"],
-        surah_name=SurahName(
+    base = {
+        "verse_id": payload["verse_id"],
+        "surah_number": payload["surah_number"],
+        "ayah_number": payload["ayah_number"],
+        "surah_name": SurahName(
             ar=names.get("ar", ""), en=names.get("en", ""), ur=names.get("ur", "")
         ),
-        text_ar=payload["text_ar"],  # canonical corpus text — authoritative
-        translation_en=payload.get("translation_en"),
-        translation_ur=payload.get("translation_ur"),
-        revelation_type=RevelationType(payload["revelation_type"]),
-        juz=payload["juz"],
-        score=round(score, 4),
-    )
+        "text_ar": payload["text_ar"],  # canonical corpus text — authoritative
+        "translation_en": payload.get("translation_en"),
+        "translation_ur": payload.get("translation_ur"),
+        "revelation_type": RevelationType(payload["revelation_type"]),
+        "juz": payload["juz"],
+        "score": round(score, 4),
+    }
+
+    # Pass through extra translation fields (translation_en_2, translation_ur_2, etc.)
+    for key, val in payload.items():
+        if (key.startswith("translation_en_") or key.startswith("translation_ur_")) and key not in base:
+            base[key] = val
+
+    return EvidenceVerse(**base)
 
 
 def validate(
@@ -52,7 +59,8 @@ def validate(
     retrieved: list[tuple[float, dict]],
 ) -> ValidationResult:
     """Validate the model's answer against the retrieved verses."""
-    retrieved_by_id = {p["verse_id"]: (s, p) for s, p in retrieved}
+    # Map verse_id -> (payload, score) so it unpacks straight into _to_evidence(payload, score).
+    retrieved_by_id = {p["verse_id"]: (p, s) for s, p in retrieved}
 
     citations = extract_citations(answer)
 

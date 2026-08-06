@@ -24,43 +24,35 @@ is required when you redistribute the data.
 | `quran-uthmani.txt` | Arabic Uthmani text | https://tanzil.net/download/ (Quran text → Uthmani, "with pipe" / `S|A|text` format) |
 | `en.sahih.txt` | Sahih International (English) | https://tanzil.net/trans/ (English → Sahih International) |
 | `ur.jalandhry.txt` | Fateh Muhammad Jalandhry (Urdu) | https://tanzil.net/trans/ (Urdu → Jalandhry) |
+| `quran-data.xml` | Structural metadata (juz/hizb/ruku/page boundaries) | https://tanzil.net/docs/quran-metadata (or the `quran-metadata` package) |
 
-Each translation download from Tanzil is already in the `S|A|text` pipe format the builder expects.
+Each translation download from Tanzil is already in the `S|A|text` pipe format the builder
+expects. `quran-data.xml` is Tanzil's canonical metadata file: it carries the authoritative
+`<juzs>`, `<hizbs>` (240 quarters), `<rukus>`, and `<pages>` boundary tables.
 
-### 2. Provide structural metadata
+### 2. Structural metadata — already in the repo
 
-Two small JSON files supply the fields Tanzil's text files don't carry inline:
+`data/tanzil/surah-metadata.json` **ships in this repo** — one entry per surah number (1–114)
+with Arabic/English/Urdu names and the Makki/Madani revelation type. You don't need to author
+anything.
 
-`data/tanzil/surah-metadata.json` — one entry per surah number (1–114):
-
-```json
-{
-  "1":   {"name_ar": "الفاتحة", "name_en": "Al-Fatihah", "name_ur": "الفاتحہ", "revelation_type": "Makki"},
-  "112": {"name_ar": "الإخلاص", "name_en": "Al-Ikhlas",  "name_ur": "الاخلاص", "revelation_type": "Makki"}
-}
-```
-
-`data/tanzil/ayah-metadata.json` — one entry per verse id (`"S:A"`) with its division numbers:
-
-```json
-{
-  "1:1":   {"juz": 1,  "hizb": 1,  "ruku": 1,   "page": 1},
-  "112:1": {"juz": 30, "hizb": 60, "ruku": 558, "page": 604}
-}
-```
-
-Juz/hizb/ruku/page can be derived from the Tanzil metadata package (`quran-data.xml` /
-`quran-metadata`), or any standard Madani-mushaf mapping. We use the widely-used Hafs/Madani
-standard: **114 surahs · 6,236 ayahs · 30 juz · 60 hizb · 558 ruku · 604 pages**.
+Per-ayah **juz / hizb / ruku / page are derived** by the builder from the boundary tables in
+`quran-data.xml` (authoritative), not hand-authored — so they are correct rather than guessed.
+The builder computes `hizb = ceil(quarter / 4)` from Tanzil's 240 quarters. There is **no**
+`ayah-metadata.json` to maintain. The result matches the Hafs/Madani standard:
+**114 surahs · 6,236 ayahs · 30 juz · 60 hizb · 558 ruku · 604 pages**.
 
 ### 3. Build and ingest
 
 ```bash
+# Merge Tanzil files + derive structure -> data/full_corpus.json
 python -m app.ingest.tanzil --in data/tanzil --out data/full_corpus.json
+
+# Validate (must be exactly 6,236 verses) and index into Qdrant
 python -m app.ingest.run --source data/full_corpus.json --full --recreate
 ```
 
-`--full` asserts the corpus contains exactly 6,236 verses before writing; `--recreate` rebuilds
+`--full` asserts the corpus contains exactly 6,236 verses before indexing; `--recreate` rebuilds
 the Qdrant collection from scratch.
 
 ## Attribution

@@ -67,15 +67,22 @@ class VectorStore:
             self.recreate()
 
     # --- writes ---------------------------------------------------------------
-    def upsert(self, records: Iterable[tuple[str, list[float], dict[str, Any]]]) -> int:
+    def upsert(self, records: Iterable[tuple[str, list[float], dict[str, Any]]], batch_size: int = 100) -> int:
+        """Upsert records in batches to avoid exceeding server payload limits."""
         points = [
             qm.PointStruct(id=point_id(vid), vector=vec, payload=payload)
             for vid, vec, payload in records
         ]
         if not points:
             return 0
-        self.client.upsert(collection_name=self.collection, points=points)
-        return len(points)
+
+        # Batch to avoid 'JSON payload larger than allowed' errors from Qdrant.
+        total = 0
+        for i in range(0, len(points), batch_size):
+            batch = points[i : i + batch_size]
+            self.client.upsert(collection_name=self.collection, points=batch)
+            total += len(batch)
+        return total
 
     def count(self) -> int:
         return self.client.count(self.collection, exact=True).count
