@@ -19,7 +19,8 @@ venv/
 # Local Qdrant on-disk store (in-memory dev mode)
 qdrant_local/
 data/tanzil/          # downloaded raw Tanzil files (built locally)
-data/full_corpus.json # generated full corpus
+# data/full_corpus.json is intentionally COMMITTED so the deployed app (Vercel, in-memory
+# Qdrant) can seed the whole Quran on cold start. Do not re-ignore it.
 
 # OS
 .DS_Store

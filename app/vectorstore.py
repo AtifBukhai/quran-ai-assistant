@@ -94,13 +94,26 @@ class VectorStore:
         limit: int,
         query_filter: Optional[qm.Filter] = None,
     ) -> list[tuple[float, dict[str, Any]]]:
-        hits = self.client.search(
-            collection_name=self.collection,
-            query_vector=vector,
-            limit=limit,
-            query_filter=query_filter,
-            with_payload=True,
-        )
+        # qdrant-client >=1.10 replaced ``.search()`` with ``.query_points()``. Support BOTH
+        # so a version bump at deploy time can't 500 us again (this is exactly what broke on
+        # Vercel): newer clients take the ``query_points`` path, older ones fall back to
+        # ``search``. ``query_points`` returns a QueryResponse whose ``.points`` are the hits.
+        if hasattr(self.client, "query_points"):
+            hits = self.client.query_points(
+                collection_name=self.collection,
+                query=vector,
+                limit=limit,
+                query_filter=query_filter,
+                with_payload=True,
+            ).points
+        else:  # qdrant-client <1.10
+            hits = self.client.search(
+                collection_name=self.collection,
+                query_vector=vector,
+                limit=limit,
+                query_filter=query_filter,
+                with_payload=True,
+            )
         return [(h.score, h.payload or {}) for h in hits]
 
     def get_by_verse_id(self, verse_id: str) -> Optional[dict[str, Any]]:

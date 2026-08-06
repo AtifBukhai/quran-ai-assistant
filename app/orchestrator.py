@@ -76,6 +76,10 @@ class Orchestrator:
             self.settings.embedding_model,
             self.settings.embedding_dim,
         )
+        # A local (:memory:) Qdrant starts empty on every process boot, so a serverless
+        # cold start (e.g. Vercel) would retrieve zero verses and refuse every question.
+        # Seed the canonical corpus from disk so retrieval has something to ground on.
+        self._seed_from_disk_if_empty()
         self.retriever = Retriever(self.store, self.embedder, dense_weight=self.settings.dense_weight)
         self.llm = _build_llm(self.settings)
         self.history: HistoryStore = build_history_store(
@@ -84,6 +88,49 @@ class Orchestrator:
             ttl_seconds=self.settings.session_ttl_seconds,
             max_turns=self.settings.max_history_turns,
         )
+
+    # --- corpus seeding (serverless / in-memory cold start) -------------------
+    def _seed_from_disk_if_empty(self) -> None:
+        """Populate an empty in-memory store with the canonical corpus.
+
+        Why: ``QdrantClient(location=":memory:")`` holds nothing across process boots, so a
+        serverless deployment (Vercel) would retrieve zero verses and refuse EVERY question
+        after a cold start. Loading the corpus here fixes that.
+
+        Grounding-safe: this only loads canonical Quran verses into the retrieval store — a
+        prerequisite for retrieval, not a relaxation of any guardrail. The four layers (corpus
+        isolation, strict system prompt, confidence gate, deterministic validator) are
+        untouched. History still assists continuity, never grounding.
+
+        Skipped entirely when a server-backed Qdrant is configured (``qdrant_url`` set): that
+        store persists its own data and is seeded once via ``python -m app.ingest.run``.
+        """
+        if self.settings.qdrant_url:
+            return  # external/persistent Qdrant — never auto-seed
+        try:
+            if self.store.count() > 0:
+                return  # already populated (warm reuse or pre-seeded)
+        except Exception:  # noqa: BLE001 - brand-new collection; treat as empty
+            pass
+
+        from pathlib import Path  # noqa: PLC0415
+
+        from .ingest.run import load_corpus, to_payload  # noqa: PLC0415
+
+        # Resolve relative to the project root (holds data/), not the process CWD, so this
+        # works regardless of where the serverless runtime launches the app from.
+        root = Path(__file__).resolve().parent.parent
+        for name in ("full_corpus.json", "sample_corpus.json"):
+            source = root / "data" / name
+            if not source.exists():
+                continue
+            verses = load_corpus(source)
+            vectors = self.embedder.encode([v.embedding_source() for v in verses])
+            records = [
+                (v.verse_id, vec, to_payload(v)) for v, vec in zip(verses, vectors)
+            ]
+            self.store.upsert(records)
+            return
 
     # --- retrieval dispatch ---------------------------------------------------
     def _retrieve(self, routed) -> list[tuple[float, dict]]:
