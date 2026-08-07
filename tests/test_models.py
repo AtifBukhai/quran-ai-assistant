@@ -88,3 +88,21 @@ def test_normalize_arabic_strips_diacritics():
     normalized = normalize_arabic(with_diacritics)
     assert "ُ" not in normalized  # damma removed
     assert "قل" in normalized
+
+
+def test_normalize_arabic_folds_alef_wasla():
+    """The Uthmani mushaf writes the definite article with alef-wasla ٱ (U+0671), e.g. ٱلرَّحْمَٰنِ.
+    A user types plain alef ا (U+0627). Both must normalize to the same token, or every
+    definite-article Arabic query (ال...) would fail to match the corpus and be refused."""
+    uthmani = "ٱلرَّحْمَٰنِ"      # as stored in data/full_corpus.json (leading U+0671)
+    typed = "الرحمن"             # as a user would type it (leading U+0627)
+    assert normalize_arabic(uthmani) == normalize_arabic(typed) == "الرحمن"
+    # And the article on the name of Allah folds identically.
+    assert normalize_arabic("ٱللَّهِ") == normalize_arabic("الله") == "الله"
+
+
+def test_normalize_arabic_wasla_matches_within_verse():
+    """Substring containment (what the KEYWORD path relies on) works across the alef variants."""
+    verse = normalize_arabic("بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ")
+    assert normalize_arabic("الرحمن") in verse
+    assert normalize_arabic("الله") in verse

@@ -45,6 +45,26 @@ def test_question_routes_to_semantic():
     assert route("What does Allah say about anger?", "en").intent is Intent.SEMANTIC
 
 
+# --- routing must not treat a content word as a question (whole-word markers only) ---
+def test_arabic_word_containing_question_letters_is_keyword():
+    # 'الرحمن' ends in the letters 'من' ("who/from"); 'سليمان' contains 'ما' ("what"). A substring
+    # question test wrongly forced these to SEMANTIC (where a lone term can score under the gate
+    # and be refused). They must route to KEYWORD for a literal match.
+    assert route("الرحمن", "ar").intent is Intent.KEYWORD
+    assert route("سليمان", "ar").intent is Intent.KEYWORD
+
+
+def test_english_word_containing_question_substring_is_keyword():
+    # 'shower' contains 'how'; 'whatever' contains 'what'. Whole-word matching keeps these KEYWORD.
+    assert route("shower", "en").intent is Intent.KEYWORD
+
+
+def test_real_question_words_still_route_to_semantic():
+    # A genuine whole-word question marker still triggers SEMANTIC.
+    assert route("who created mankind", "en").intent is Intent.SEMANTIC
+    assert route("من خلق الانسان", "ar").intent is Intent.SEMANTIC
+
+
 # --- end-to-end retrieval via expansion --------------------------------------
 def test_synonym_query_surfaces_related_verse(orch):
     # 'anger' never appears literally, but 1:7 speaks of those who earned Allah's anger and

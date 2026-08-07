@@ -37,6 +37,11 @@ class Intent(str, Enum):
     SEMANTIC = "semantic"
 
 
+# The three concrete corpus languages, and the sentinel that means "search all of them".
+_LANGS: tuple[str, ...] = ("ar", "en", "ur")
+ALL_LANGUAGES = "all"
+
+
 _ARABIC_RANGE = re.compile(r"[؀-ۿ]")
 # Urdu-specific letters not used in standard Arautf script (heuristic for ar vs ur).
 _URDU_MARKERS = re.compile(r"[ٹڈڑںھۃیےگچپژ]")
@@ -116,7 +121,27 @@ class RoutedQuery:
 
 
 # Keyword queries are short (1-3 tokens), no question words/punctuation.
-_QUESTION_MARKERS = re.compile(r"[?؟]|who|what|when|where|why|how|کیا|کون|کیوں|کیسے|من|ما|هل|كيف|لماذا")
+# Question markers are matched WHOLE-WORD, never as substrings: a single content word like
+# 'الرحمن' ends in the letters 'من' ("who/from") and 'سليمان' contains 'ما' ("what"), and the
+# English 'shower' contains 'how' — a substring test would wrongly flag these as questions and
+# force them down the SEMANTIC path (where a lone term can score under the confidence gate and
+# be refused) instead of the literal KEYWORD path. So we tokenize and test membership.
+_QUESTION_PUNCT = re.compile(r"[?؟]")
+_QUESTION_WORDS: frozenset[str] = frozenset(
+    {
+        "who", "what", "when", "where", "why", "how",
+        "کیا", "کون", "کیوں", "کیسے",
+        "من", "ما", "هل", "كيف", "لماذا",
+    }
+)
+
+
+def _has_question_marker(query: str) -> bool:
+    """True if the query carries interrogative intent — '?'/'؟' punctuation or a whole-word
+    question word. Substring matches are deliberately avoided (see note above)."""
+    if _QUESTION_PUNCT.search(query):
+        return True
+    return any(t in _QUESTION_WORDS for t in _TOKEN_RE.findall(query.lower()))
 
 
 def route(query: str, language: str, filters: Optional[dict] = None) -> RoutedQuery:
@@ -135,7 +160,7 @@ def route(query: str, language: str, filters: Optional[dict] = None) -> RoutedQu
             Intent.SURAH, language, q, surah_term=ms.group(2).strip(), filters=filters
         )
 
-    has_question = bool(_QUESTION_MARKERS.search(q.lower()))
+    has_question = _has_question_marker(q)
     # KEYWORD is for a single meaningful term ('mercy', 'الرحمن') where exact substring match is
     # the right tool. Multi-word phrases ('women inheritance', 'punishment of pharaoh') go to
     # SEMANTIC so per-token lexical overlap + concept expansion apply, rather than trying to
@@ -291,6 +316,20 @@ class Retriever:
             return "translation_ur_normalized"
         return "translation_en_lower"
 
+    @staticmethod
+    def _resolve_languages(language: str) -> tuple[str, ...]:
+        """Concrete languages to scan for a requested scope.
+
+        An explicit 'ar' | 'en' | 'ur' searches only that language's field(s); anything else —
+        the ``ALL_LANGUAGES`` sentinel or an unrecognized code — searches all three. Scoring
+        each language with its OWN calibrated index and merging by max (see ``keyword`` /
+        ``lexical_overlap``) only widens recall: a verse's score can never drop below its
+        single-language value, so the confidence gate thresholds stay valid and an out-of-scope
+        query — sharing no vocabulary with any verse in ANY language — still scores 0 and is
+        refused. Grounding is unchanged; this only broadens which field can supply the match.
+        """
+        return (language,) if language in _LANGS else _LANGS
+
     def _normalize_query(self, query: str, language: str) -> str:
         if language == "ar":
             return normalize_arabic(query)
@@ -304,54 +343,78 @@ class Retriever:
         )
         return [p.payload or {} for p in points]
 
-    def keyword(self, query: str, language: str, limit: int) -> list[tuple[float, dict[str, Any]]]:
+    def _keyword_score_for_verse(
+        self, pl: dict[str, Any], language: str, needle: str, expanded: set[str]
+    ) -> float:
+        """Keyword score for ONE verse in ONE language: literal substring hits, else expansion.
+
+        Literal substring matches (base field + that language's extra translations) score
+        ``0.5 + 0.1*matches``; with no literal hit, concept-expanded terms checked against the
+        verse's own-language tokens and the Arabic text add a small capped bonus. Identical to
+        the original single-language logic — ``keyword`` just calls it once per scanned language.
+        """
+        field_name = self._field_for(language)
+        hay = str(pl.get(field_name, ""))
+        matches = hay.count(needle) if needle and needle in hay else 0
+
+        # Extra translation fields (translation_en_2_lower, translation_ur_2_normalized, ...).
+        if language == "en":
+            for key in pl:
+                if key.startswith("translation_en_") and key.endswith("_lower") and key != "translation_en_lower":
+                    extra_hay = str(pl.get(key, ""))
+                    if needle and needle in extra_hay:
+                        matches += extra_hay.count(needle)
+        elif language == "ur":
+            for key in pl:
+                if key.startswith("translation_ur_") and key.endswith("_normalized") and key != "translation_ur_normalized":
+                    extra_hay = str(pl.get(key, ""))
+                    if needle and needle in extra_hay:
+                        matches += extra_hay.count(needle)
+
+        if matches > 0:
+            return min(1.0, 0.5 + 0.1 * matches)
+
+        # No literal hit — try concept expansion (token-level, incl. Arabic text).
+        if expanded:
+            hay_tokens = set(_tokenize(str(pl.get(field_name, ""))))
+            ar_tokens = set(_tokenize(str(pl.get("text_ar_normalized", ""))))
+            exp_hits = sum(1 for t in expanded if t in hay_tokens or t in ar_tokens)
+            if exp_hits:
+                return min(0.5, _EXPANSION_WEIGHT * exp_hits)
+        return 0.0
+
+    def keyword(
+        self, query: str, language: str, limit: int
+    ) -> list[tuple[float, dict[str, Any]]]:
         """Exact-phrase / substring keyword search (KEYWORD intent, e.g. 'mercy', 'الرحمن').
+
+        When ``language`` is 'ar' | 'en' | 'ur' this searches only that language's field(s).
+        When it is ``ALL_LANGUAGES`` (the default for an auto-detected query), it scans the
+        Arabic text AND every English/Urdu translation, scoring each language independently and
+        keeping the best (max) per verse — so a term is found whichever language it appears in.
 
         Also applies offline concept expansion so a single topical word — 'justice',
         'marriage', 'parents' — surfaces verses using related terms and their AR/UR
         equivalents, not only the literal string. Literal substring matches always rank
         first; expansion matches fill in below them.
         """
-        needle = self._normalize_query(query, language)
-        field_name = self._field_for(language)
-
-        # Concept-expanded related terms (across scripts) for topical recall.
-        base_tokens = [
-            t for t in _tokenize(needle) if t not in _STOPWORDS
-        ]
-        expanded = expand_terms(base_tokens) - set(base_tokens) if base_tokens else set()
+        # Precompute the per-language needle + expansion terms once, then scan the corpus once.
+        per_lang: list[tuple[str, str, set[str]]] = []
+        for lang in self._resolve_languages(language):
+            needle = self._normalize_query(query, lang)
+            base_tokens = [t for t in _tokenize(needle) if t not in _STOPWORDS]
+            expanded = expand_terms(base_tokens) - set(base_tokens) if base_tokens else set()
+            per_lang.append((lang, needle, expanded))
 
         scored: list[tuple[float, dict[str, Any]]] = []
         for pl in self._all_points():
-            # Search base field
-            hay = str(pl.get(field_name, ""))
-            matches = hay.count(needle) if needle and needle in hay else 0
-
-            # Search extra translation fields (translation_en_2_lower, translation_ur_2_normalized, etc.)
-            if language == "en":
-                for key in pl:
-                    if key.startswith("translation_en_") and key.endswith("_lower") and key != "translation_en_lower":
-                        extra_hay = str(pl.get(key, ""))
-                        if needle and needle in extra_hay:
-                            matches += extra_hay.count(needle)
-            elif language == "ur":
-                for key in pl:
-                    if key.startswith("translation_ur_") and key.endswith("_normalized") and key != "translation_ur_normalized":
-                        extra_hay = str(pl.get(key, ""))
-                        if needle and needle in extra_hay:
-                            matches += extra_hay.count(needle)
-
-            if matches > 0:
-                scored.append((min(1.0, 0.5 + 0.1 * matches), pl))
-                continue
-
-            # No literal hit — try concept expansion (token-level, incl. Arabic text).
-            if expanded:
-                hay_tokens = set(_tokenize(str(pl.get(field_name, ""))))
-                ar_tokens = set(_tokenize(str(pl.get("text_ar_normalized", ""))))
-                exp_hits = sum(1 for t in expanded if t in hay_tokens or t in ar_tokens)
-                if exp_hits:
-                    scored.append((min(0.5, _EXPANSION_WEIGHT * exp_hits), pl))
+            best = 0.0
+            for lang, needle, expanded in per_lang:
+                s = self._keyword_score_for_verse(pl, lang, needle, expanded)
+                if s > best:
+                    best = s
+            if best > 0:
+                scored.append((best, pl))
         scored.sort(key=lambda r: r[0], reverse=True)
         return scored[:limit]
 
@@ -367,44 +430,61 @@ class Retriever:
         sharing no query vocabulary scores 0 and is refused by the confidence gate — out-of-scope
         questions still fail deterministically rather than latching onto a nearest neighbour.
 
+        When ``language`` is 'ar' | 'en' | 'ur' only that language's BM25 index is used. When it
+        is ``ALL_LANGUAGES`` (the default for an auto-detected query), the query is scored against
+        each language's OWN calibrated index and the best (max) score per verse is kept. Because
+        each index keeps its own [0,1] calibration and we take a max, this only widens recall — a
+        verse's score never drops below its single-language value, so the confidence gate stays
+        valid and off-topic queries are still refused.
+
         Concept expansion (offline, no model) adds *related* terms — e.g. 'anger' also matches
         verses about 'wrath'/'rage' and their Arabic/Urdu equivalents. The BM25 score over the
         literal query terms is the primary signal; expansion-only hits add a small, capped bonus
         so a verse matched purely through a synonym ranks below one containing the literal term.
         The method name is retained for call-site compatibility.
         """
-        base_tokens = [
-            t for t in _tokenize(self._normalize_query(query, language)) if t not in _STOPWORDS
-        ]
-        if not base_tokens:
+        # Precompute, per scanned language, the literal query tokens, expansion terms, and the
+        # (cached) BM25 index. Languages whose query has no meaningful tokens are skipped.
+        per_lang: list[tuple[str, list[str], set[str], BM25Index]] = []
+        for lang in self._resolve_languages(language):
+            base_tokens = [
+                t for t in _tokenize(self._normalize_query(query, lang)) if t not in _STOPWORDS
+            ]
+            if not base_tokens:
+                continue
+            expanded = expand_terms(base_tokens) - set(base_tokens)
+            per_lang.append((lang, base_tokens, expanded, self._bm25_index(lang)))
+        if not per_lang:
             return []
-        base_set = set(base_tokens)
-        # Related concept terms (across scripts) minus the literal query tokens.
-        expanded = expand_terms(base_tokens) - base_set
-
-        bm25 = self._bm25_index(language)
 
         scored: list[tuple[float, dict[str, Any]]] = []
         for pl in self._all_points():
             vid = pl.get("verse_id")
             if not vid:
                 continue
-            # Primary lexical signal: BM25 over the literal query terms.
-            base_score = bm25.score(vid, base_tokens)
+            ar_tokens: set[str] | None = None  # lazily computed; shared across languages
+            best = 0.0
+            for lang, base_tokens, expanded, bm25 in per_lang:
+                # Primary lexical signal: BM25 over the literal query terms.
+                base_score = bm25.score(vid, base_tokens)
 
-            # Additive, capped concept-expansion bonus. Expansion terms are checked against the
-            # verse's own-language tokens and (always) the Arabic text, so cross-script synonyms
-            # match. Kept small so expansion lifts recall/ranking but never dominates a literal hit.
-            exp_frac = 0.0
-            if expanded:
-                hay_tokens = set(self._verse_tokens(pl, language))
-                ar_tokens = set(_tokenize(str(pl.get("text_ar_normalized", ""))))
-                exp_hits = sum(1 for t in expanded if t in hay_tokens or t in ar_tokens)
-                exp_frac = min(0.5, _EXPANSION_WEIGHT * exp_hits)
+                # Additive, capped concept-expansion bonus. Expansion terms are checked against
+                # the verse's own-language tokens and (always) the Arabic text, so cross-script
+                # synonyms match. Kept small so expansion lifts recall/ranking but never
+                # dominates a literal hit.
+                exp_frac = 0.0
+                if expanded:
+                    if ar_tokens is None:
+                        ar_tokens = set(_tokenize(str(pl.get("text_ar_normalized", ""))))
+                    hay_tokens = set(self._verse_tokens(pl, lang))
+                    exp_hits = sum(1 for t in expanded if t in hay_tokens or t in ar_tokens)
+                    exp_frac = min(0.5, _EXPANSION_WEIGHT * exp_hits)
 
-            score = min(1.0, base_score + exp_frac)
-            if score > 0:
-                scored.append((score, pl))
+                score = min(1.0, base_score + exp_frac)
+                if score > best:
+                    best = score
+            if best > 0:
+                scored.append((best, pl))
         scored.sort(key=lambda r: r[0], reverse=True)
         return scored[:limit]
 

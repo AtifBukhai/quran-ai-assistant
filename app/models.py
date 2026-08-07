@@ -35,10 +35,22 @@ class RevelationType(str, Enum):
 
 
 def normalize_arabic(text: str) -> str:
-    """Strip diacritics/tatweel and collapse whitespace for lexical matching."""
+    """Strip diacritics/tatweel and collapse whitespace for lexical matching.
+
+    Alef folding is critical for the Uthmani corpus: the printed mushaf writes the definite
+    article and hamzat-wasl with alef-wasla ``ٱ`` (U+0671), e.g. ``ٱللَّهِ``, ``ٱلرَّحْمَٰنِ`` — NOT
+    the plain alef ``ا`` (U+0627) a user types. Without folding ``ٱ`` (and the rarer hamza-alef
+    forms) onto plain alef, a query like ``الرحمن`` would never substring/token match the stored
+    ``ٱلرحمن``, so essentially every definite-article Arabic search would be refused. The
+    superscript/dagger alef ``ٰ`` (U+0670) is removed by the diacritics class above.
+    """
     stripped = _ARABIC_DIACRITICS.sub("", text)
     stripped = (
-        stripped.replace("آ", "ا")  # آ -> ا
+        stripped.replace("ٱ", "ا")  # alef wasla (U+0671) -> ا  (Uthmani definite article)
+        .replace("ٲ", "ا")  # alef with wavy hamza above (U+0672) -> ا
+        .replace("ٳ", "ا")  # alef with wavy hamza below (U+0673) -> ا
+        .replace("ٵ", "ا")  # alef with hamza + madda (U+0675) -> ا
+        .replace("آ", "ا")  # آ -> ا
         .replace("أ", "ا")  # أ -> ا
         .replace("إ", "ا")  # إ -> ا
         .replace("ى", "ي")  # ى -> ي
