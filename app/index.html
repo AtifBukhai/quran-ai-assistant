@@ -11,58 +11,69 @@
 <style>
   /* ---------- Design tokens ---------- */
   :root {
+    color-scheme: light;
     --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --font-ar: "Amiri Quran", "Amiri", "Scheherazade New", "Traditional Arabic", serif;
 
-    --bg: #f6f7f6;
+    --bg: #f4f6f4;
     --surface: #ffffff;
-    --surface-2: #f1f3f1;
-    --sidebar-bg: #eef1ef;
-    --text: #17201b;
-    --muted: #63706a;
-    --faint: #8a978f;
-    --border: #e3e7e3;
-    --accent: #0f7a57;
-    --accent-hover: #0c6547;
-    --accent-soft: #e4f3eb;
-    --ring: rgba(15, 122, 87, 0.32);
-    --gold: #b0823f;
+    --surface-2: #eef1ee;
+    --sidebar-bg: #eaeee9;
+    --text: #141c17;
+    --muted: #55625b;          /* AA: 6.4:1 on surface, 5.4:1 on sidebar-bg */
+    --faint: #5e6c65;          /* AA: 5.5:1 on surface, 4.7:1 on sidebar-bg */
+    --border: #dfe4df;
+    --border-strong: #cbd3cb;
+    --accent: #0d6f4e;         /* AA (4.7:1) white-on-accent for buttons */
+    --accent-hover: #0a5c40;
+    --accent-soft: #e2f2ea;
+    --accent-ink: #0a5238;     /* accent text on light surfaces, AA */
+    --ring: rgba(13, 111, 78, 0.34);
+    --gold: #9c6f2f;
 
-    --ok-bg: #e4f3eb; --ok-fg: #146145;
-    --warn-bg: #fbeedc; --warn-fg: #8a5316;
-    --err-bg: #fbe4e4; --err-fg: #a12626;
+    --ok-bg: #e2f2ea; --ok-fg: #0f5a3f;
+    --warn-bg: #fbeedc; --warn-fg: #7a4712;
+    --err-bg: #fbe4e4; --err-fg: #932121;
 
-    --shadow-sm: 0 1px 2px rgba(20, 30, 25, 0.05);
-    --shadow-md: 0 6px 24px rgba(20, 30, 25, 0.10);
-    --radius: 14px;
-    --radius-sm: 9px;
-    --sidebar-w: 268px;
+    --shadow-sm: 0 1px 2px rgba(20, 30, 25, 0.06);
+    --shadow-md: 0 4px 16px rgba(20, 30, 25, 0.10);
+    --shadow-lg: 0 12px 34px rgba(20, 30, 25, 0.14);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --radius-xs: 8px;
+    --sidebar-w: 272px;
+    --tap: 44px;               /* minimum comfortable touch target */
   }
   html[data-theme="dark"] {
-    --bg: #0f1211;
-    --surface: #171a18;
-    --surface-2: #1e2320;
-    --sidebar-bg: #0b0e0c;
-    --text: #e7eae7;
-    --muted: #98a29c;
-    --faint: #71807a;
-    --border: #262c28;
-    --accent: #37c08d;
-    --accent-hover: #2fae7e;
-    --accent-soft: #12271e;
-    --ring: rgba(55, 192, 141, 0.36);
+    color-scheme: dark;
+    --bg: #0e1110;
+    --surface: #171b19;
+    --surface-2: #212724;
+    --sidebar-bg: #0a0d0b;
+    --text: #e9ece9;
+    --muted: #a4aea8;          /* AA on dark --surface */
+    --faint: #859289;
+    --border: #29302c;
+    --border-strong: #39423d;
+    --accent: #38c48f;
+    --accent-hover: #46d29d;
+    --accent-soft: #123023;
+    --accent-ink: #6fdcae;
+    --ring: rgba(56, 196, 143, 0.40);
     --gold: #d4af6a;
 
-    --ok-bg: #12271e; --ok-fg: #5fd3a2;
-    --warn-bg: #2c2416; --warn-fg: #e3b877;
-    --err-bg: #2e1a1a; --err-fg: #e39a9a;
+    --ok-bg: #123023; --ok-fg: #6fdcae;
+    --warn-bg: #2c2416; --warn-fg: #e7bd7c;
+    --err-bg: #2e1a1a; --err-fg: #ec9f9f;
 
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
-    --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.45);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32);
+    --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.42);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.52);
   }
 
   * { box-sizing: border-box; }
   html, body { height: 100%; }
+  html { scroll-behavior: smooth; }
   body {
     margin: 0;
     background: var(--bg);
@@ -71,7 +82,9 @@
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    overflow: hidden;
   }
+  ::selection { background: var(--ring); }
 
   /* ---------- Accessibility helpers ---------- */
   .sr-only {
@@ -79,20 +92,27 @@
     overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
   }
   .skip-link {
-    position: fixed; top: -60px; left: 12px; z-index: 200;
-    background: var(--accent); color: #fff; padding: 10px 16px; border-radius: 8px;
-    text-decoration: none; font-weight: 600; transition: top .15s ease;
+    position: fixed; top: -64px; left: 12px; z-index: 300;
+    background: var(--accent); color: #fff; padding: 12px 18px; border-radius: 10px;
+    text-decoration: none; font-weight: 600; transition: top .15s ease; min-height: var(--tap);
   }
   .skip-link:focus { top: 12px; }
+  /* One consistent focus treatment everywhere: a 2px accent ring, never removed for
+     mouse-only use, so keyboard users always see where they are. */
   :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
     border-radius: 6px;
   }
+  button, select, textarea, a, .chip { -webkit-tap-highlight-color: transparent; }
 
   /* ---------- App shell ---------- */
   .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; height: 100vh; height: 100dvh; }
   .app.sidebar-collapsed { grid-template-columns: 0 1fr; }
+  /* Collapsed on desktop: the 0-width column clips the sidebar, but its controls would still be
+     keyboard-focusable. Hide it from the tab order + a11y tree while collapsed. (On mobile the JS
+     strips `sidebar-collapsed`, so this never fights the drawer's own visibility handling.) */
+  .app.sidebar-collapsed > .sidebar { visibility: hidden; }
 
   /* ---------- Sidebar ---------- */
   .sidebar {
@@ -106,11 +126,12 @@
     width: 100%; display: flex; align-items: center; gap: 9px; justify-content: flex-start;
     background: var(--surface); color: var(--text);
     border: 1px solid var(--border); border-radius: var(--radius-sm);
-    padding: 11px 13px; font-size: .92rem; font-weight: 600; cursor: pointer;
-    font-family: inherit; box-shadow: var(--shadow-sm); transition: border-color .15s, background .15s;
+    padding: 12px 14px; font-size: .92rem; font-weight: 600; cursor: pointer; min-height: var(--tap);
+    font-family: inherit; box-shadow: var(--shadow-sm); transition: border-color .15s, background .15s, color .15s, transform .1s;
   }
-  .newchat:hover { border-color: var(--accent); color: var(--accent); }
-  .newchat .plus { font-size: 1.1rem; line-height: 1; margin-top: -1px; }
+  .newchat:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); }
+  .newchat:active { transform: scale(0.98); }
+  .newchat .plus { font-size: 1.15rem; line-height: 1; margin-top: -1px; }
   .sidebar-label {
     padding: 12px 16px 6px; font-size: .72rem; font-weight: 700; letter-spacing: .06em;
     text-transform: uppercase; color: var(--faint);
@@ -119,80 +140,108 @@
   .history-empty { padding: 8px 12px; color: var(--faint); font-size: .84rem; line-height: 1.5; }
   .session {
     display: flex; align-items: center; gap: 8px; width: 100%;
-    padding: 9px 10px; border-radius: var(--radius-sm); cursor: pointer;
+    padding: 8px 8px 8px 12px; border-radius: var(--radius-sm); cursor: pointer; min-height: 42px;
     color: var(--text); font-size: .88rem; border: 1px solid transparent; text-align: left;
     background: transparent; font-family: inherit; margin-bottom: 2px;
+    transition: background .13s, border-color .13s;
   }
   .session:hover { background: var(--surface-2); }
   .session.active { background: var(--surface); border-color: var(--border); box-shadow: var(--shadow-sm); }
   .session .s-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .session .s-del {
     opacity: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer;
-    padding: 2px 5px; border-radius: 6px; font-size: .95rem; line-height: 1; flex: none;
+    width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 7px; font-size: .95rem; line-height: 1; flex: none; transition: color .13s, background .13s, opacity .13s;
   }
-  .session:hover .s-del, .session.active .s-del { opacity: 1; }
-  .session .s-del:hover { color: var(--err-fg); background: var(--err-bg); }
-  .sidebar-foot { padding: 10px 16px 14px; border-top: 1px solid var(--border); font-size: .74rem; color: var(--faint); }
+  .session:hover .s-del, .session.active .s-del, .session:focus-within .s-del { opacity: 1; }
+  .session .s-del:hover, .session .s-del:focus-visible { color: var(--err-fg); background: var(--err-bg); }
+  /* Touch devices have no hover, so keep delete affordances always visible there. */
+  @media (hover: none) { .session .s-del { opacity: 1; } }
+  .sidebar-foot { padding: 12px 16px 14px; border-top: 1px solid var(--border); font-size: .74rem; color: var(--faint); line-height: 1.5; }
 
   /* ---------- Top bar ---------- */
   .main { display: flex; flex-direction: column; min-width: 0; height: 100vh; height: 100dvh; }
   .topbar {
-    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
-    border-bottom: 1px solid var(--border); background: var(--surface);
+    display: flex; align-items: center; gap: 12px; padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
+    -webkit-backdrop-filter: saturate(1.4) blur(10px); backdrop-filter: saturate(1.4) blur(10px);
     position: sticky; top: 0; z-index: 20;
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .topbar { background: var(--surface); }
   }
   .icon-btn {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border);
+    width: var(--tap); height: var(--tap); border-radius: 12px; border: 1px solid var(--border);
     background: var(--surface); color: var(--text); cursor: pointer; flex: none;
-    font-size: 1.1rem; line-height: 1; transition: border-color .15s, background .15s;
+    font-size: 1.15rem; line-height: 1; transition: border-color .15s, background .15s, color .15s, transform .1s;
   }
-  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .icon-btn:active { transform: scale(0.94); }
   .brand { display: flex; flex-direction: column; line-height: 1.15; margin-right: auto; min-width: 0; }
-  .brand .b-title { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.01em; }
+  .brand .b-title { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .brand .b-duaa {
-    font-family: var(--font-ar); font-size: 1.02rem; color: var(--accent);
+    font-family: var(--font-ar); font-size: 1.05rem; color: var(--accent-ink);
     direction: rtl; margin-top: 1px; font-weight: 400;
   }
   .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-  .ctl { display: flex; align-items: center; gap: 6px; }
-  .ctl label { font-size: .72rem; color: var(--muted); font-weight: 500; white-space: nowrap; }
+  .ctl { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .ctl label { font-size: .72rem; color: var(--muted); font-weight: 600; white-space: nowrap; }
   select {
-    border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; font-size: .82rem;
-    background: var(--surface); color: var(--text); font-family: inherit; cursor: pointer; max-width: 190px;
+    appearance: none; -webkit-appearance: none;
+    border: 1px solid var(--border); border-radius: var(--radius-xs); padding: 8px 30px 8px 11px; font-size: .84rem;
+    background: var(--surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%2355625b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 10px center;
+    color: var(--text); font-family: inherit; cursor: pointer; max-width: 190px; min-height: var(--tap);
+    transition: border-color .15s, box-shadow .15s;
   }
-  select:hover { border-color: var(--accent); }
+  select:hover { border-color: var(--border-strong); }
+  select:focus-visible { border-color: var(--accent); }
+  html[data-theme="dark"] select {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%23a4aea8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  }
 
   /* ---------- Conversation area ---------- */
-  .scroll { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
-  .thread { max-width: 820px; margin: 0 auto; padding: 26px 20px 20px; }
+  .scroll { flex: 1; overflow-y: auto; scroll-behavior: smooth; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .scroll::-webkit-scrollbar { width: 10px; }
+  .scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+  .scroll::-webkit-scrollbar-thumb:hover { background: var(--faint); background-clip: padding-box; }
+  .thread { max-width: 820px; margin: 0 auto; padding: 30px 22px 22px; }
 
   /* Hero / empty + landing state */
-  .hero { display: flex; flex-direction: column; align-items: center; justify-content: center;
-          text-align: center; min-height: calc(100vh - 220px); min-height: calc(100dvh - 220px); padding: 20px; }
-  .hero h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
-  .hero .duaa {
-    font-family: var(--font-ar); font-size: 2.5rem; color: var(--accent); direction: rtl;
-    margin: 14px 0 6px; line-height: 1.7;
+  .hero { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+          text-align: center; min-height: calc(100vh - 240px); min-height: calc(100dvh - 240px); padding: 24px 8px; }
+  .hero::before {
+    content: ""; position: absolute; top: 6%; left: 50%; transform: translateX(-50%);
+    width: min(560px, 92%); height: 340px; border-radius: 50%;
+    background: radial-gradient(closest-side, var(--accent-soft), transparent 74%);
+    pointer-events: none;
   }
-  .hero .duaa-flourish { width: 120px; height: 2px; background: linear-gradient(90deg, transparent, var(--gold), transparent); margin: 2px auto 18px; }
-  .hero .tagline { color: var(--muted); font-size: 1.02rem; max-width: 480px; margin: 0 auto 26px; }
-  .hero .attrib { margin: 26px auto 0; font-size: .78rem; color: var(--faint); }
-  .chips { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; max-width: 560px; }
+  .hero h1 { font-size: 2.05rem; font-weight: 700; letter-spacing: -0.022em; margin: 0; position: relative; }
+  .hero .duaa {
+    font-family: var(--font-ar); font-size: 2.6rem; color: var(--accent-ink); direction: rtl;
+    margin: 16px 0 6px; line-height: 1.7; position: relative; text-shadow: 0 1px 0 color-mix(in srgb, var(--surface) 60%, transparent);
+  }
+  html[data-theme="dark"] .hero .duaa { color: var(--accent); }
+  .hero .duaa-flourish { width: 132px; height: 2px; background: linear-gradient(90deg, transparent, var(--gold), transparent); margin: 4px auto 20px; position: relative; }
+  .hero .tagline { color: var(--muted); font-size: 1.03rem; max-width: 500px; margin: 0 auto 28px; position: relative; }
+  .hero .attrib { margin: 28px auto 0; font-size: .78rem; color: var(--faint); position: relative; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 560px; position: relative; }
   .chip {
     background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
-    padding: 8px 15px; font-size: .87rem; color: var(--text); cursor: pointer; font-family: inherit;
-    transition: border-color .15s, color .15s, background .15s; box-shadow: var(--shadow-sm);
+    padding: 10px 17px; font-size: .87rem; color: var(--text); cursor: pointer; font-family: inherit;
+    transition: border-color .15s, color .15s, background .15s, transform .1s, box-shadow .15s; box-shadow: var(--shadow-sm);
   }
-  .chip:hover { border-color: var(--accent); color: var(--accent); }
-  .chip .chip-ar { font-family: var(--font-ar); font-size: 1.05rem; }
+  .chip:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+  .chip .chip-ar { font-family: var(--font-ar); font-size: 1.1rem; }
 
   /* Messages */
-  .msg { margin-bottom: 22px; }
+  .msg { margin-bottom: 24px; }
   .msg-user { display: flex; justify-content: flex-end; }
   .msg-user .bubble {
-    background: var(--accent); color: #fff; padding: 11px 16px; border-radius: 16px 16px 4px 16px;
-    max-width: 78%; font-size: .98rem; box-shadow: var(--shadow-sm); overflow-wrap: anywhere;
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover)); color: #fff; padding: 12px 17px;
+    border-radius: 18px 18px 5px 18px; max-width: 80%; font-size: .98rem; line-height: 1.5;
+    box-shadow: var(--shadow-sm); overflow-wrap: anywhere;
   }
   .msg-assistant .a-inner { animation: rise .28s ease both; }
   @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -219,20 +268,25 @@
   @keyframes bounce { 0%, 80%, 100% { transform: scale(.6); opacity: .5; } 40% { transform: scale(1); opacity: 1; } }
 
   /* Refusal / error notice */
-  .notice { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; background: var(--surface); box-shadow: var(--shadow-sm); }
-  .notice.warn { border-left: 3px solid var(--warn-fg); }
-  .notice.err  { border-left: 3px solid var(--err-fg); }
-  .notice h3 { margin: 0 0 5px; font-size: .98rem; }
+  .notice { border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; background: var(--surface); box-shadow: var(--shadow-sm); }
+  .notice.warn { border-left: 4px solid var(--warn-fg); }
+  .notice.err  { border-left: 4px solid var(--err-fg); }
+  .notice h3 { margin: 0 0 6px; font-size: .98rem; }
   .notice p { margin: 0; color: var(--muted); font-size: .92rem; }
   .notice .retry {
-    margin-top: 12px; background: var(--accent); color: #fff; border: 0; border-radius: 8px;
-    padding: 8px 15px; font-size: .86rem; font-weight: 600; cursor: pointer; font-family: inherit;
+    margin-top: 14px; background: var(--accent); color: #fff; border: 0; border-radius: var(--radius-xs);
+    padding: 10px 18px; font-size: .86rem; font-weight: 600; cursor: pointer; font-family: inherit; min-height: var(--tap);
+    transition: background .15s;
   }
   .notice .retry:hover { background: var(--accent-hover); }
 
   /* Verse cards */
   .verse-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px;
-                margin: 14px 0; background: var(--surface); box-shadow: var(--shadow-sm); animation: rise .3s ease both; }
+                margin: 14px 0; background: var(--surface); box-shadow: var(--shadow-sm); animation: rise .3s ease both;
+                transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease; }
+  @media (hover: hover) {
+    .verse-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); border-color: var(--border-strong); }
+  }
   .verse-header { font-size: 1.02rem; font-weight: 600; margin-bottom: 13px; padding-bottom: 10px;
                   border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 8px; }
   .verse-header .vh-id { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -272,49 +326,110 @@
   html[data-theme="dark"] mark { background: rgba(212, 175, 106, 0.26); }
 
   /* Composer */
-  .composer-wrap { border-top: 1px solid var(--border); background: var(--surface); padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
-  .composer { max-width: 820px; margin: 0 auto; display: flex; align-items: flex-end; gap: 10px;
-              background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-              padding: 8px 8px 8px 14px; box-shadow: var(--shadow-sm); transition: border-color .15s, box-shadow .15s; }
-  .composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+  .composer-wrap { border-top: 1px solid var(--border); background: var(--surface); padding: 14px 18px calc(12px + env(safe-area-inset-bottom)); }
+  .composer { max-width: 820px; margin: 0 auto; display: flex; align-items: flex-end; gap: 8px;
+              background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius);
+              padding: 7px 7px 7px 16px; box-shadow: var(--shadow-sm); transition: border-color .15s, box-shadow .15s; }
+  .composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px var(--ring); }
   .composer textarea {
     flex: 1; border: 0; background: transparent; resize: none; outline: none; color: var(--text);
-    font-size: 1rem; font-family: inherit; line-height: 1.5; max-height: 180px; padding: 6px 0;
+    font-size: 1rem; font-family: inherit; line-height: 1.5; max-height: 180px; padding: 10px 0; caret-color: var(--accent);
   }
   .composer textarea::placeholder { color: var(--faint); }
-  .send { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px;
-          border-radius: 10px; background: var(--accent); color: #fff; border: 0; cursor: pointer; flex: none; transition: background .15s; }
+  .send { display: inline-flex; align-items: center; justify-content: center; width: var(--tap); height: var(--tap);
+          border-radius: 12px; background: var(--accent); color: #fff; border: 0; cursor: pointer; flex: none;
+          font-size: 1.05rem; transition: background .15s, transform .1s; }
   .send:hover { background: var(--accent-hover); }
+  .send:active { transform: scale(0.94); }
   .send:disabled { background: var(--faint); cursor: default; }
   .send .spin { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; animation: rot .7s linear infinite; }
   @keyframes rot { to { transform: rotate(360deg); } }
-  .composer-hint { max-width: 820px; margin: 7px auto 0; font-size: .74rem; color: var(--faint); text-align: center; }
+  .mic { display: inline-flex; align-items: center; justify-content: center; width: var(--tap); height: var(--tap);
+         border-radius: 12px; background: var(--surface); color: var(--muted); border: 1px solid var(--border);
+         cursor: pointer; flex: none; font-size: 1.05rem; line-height: 1; transition: border-color .15s, background .15s, color .15s, transform .1s; }
+  .mic-lang { flex: none; align-self: center; padding: 8px 6px; font-size: .76rem; max-width: 66px; min-height: var(--tap);
+              border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer;
+              appearance: none; -webkit-appearance: none; text-align: center; text-align-last: center; }
+  .mic-lang:hover { border-color: var(--accent); color: var(--accent-ink); }
+  .mic:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); }
+  .mic:active { transform: scale(0.94); }
+  .mic:disabled { opacity: .5; cursor: default; }
+  .mic[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); animation: mic-pulse 1.3s ease-in-out infinite; }
+  @keyframes mic-pulse { 0%, 100% { box-shadow: 0 0 0 0 var(--ring); } 50% { box-shadow: 0 0 0 7px transparent; } }
+  .composer-hint { max-width: 820px; margin: 8px auto 0; font-size: .74rem; color: var(--faint); text-align: center; }
 
   /* Mobile backdrop */
   .backdrop { display: none; position: fixed; inset: 0; background: rgba(10, 15, 12, 0.42); z-index: 40; }
 
   /* ---------- Responsive ---------- */
+  /* Tablet & phone: sidebar becomes an off-canvas drawer, and the top-bar controls drop to a
+     full-width row that reflows into a tidy grid so nothing ever overflows the viewport. */
   @media (max-width: 860px) {
     .app { grid-template-columns: 1fr; }
     .sidebar {
-      position: fixed; top: 0; bottom: 0; left: 0; width: var(--sidebar-w); z-index: 50;
-      transform: translateX(-100%); transition: transform .22s ease; box-shadow: var(--shadow-md);
+      position: fixed; top: 0; bottom: 0; left: 0; width: min(var(--sidebar-w), 84vw); z-index: 50;
+      transform: translateX(-100%); box-shadow: var(--shadow-lg); will-change: transform;
+      /* Hidden while off-canvas so its controls leave the tab order + a11y tree; the delayed
+         visibility flip keeps it present through the slide-out animation. */
+      visibility: hidden; transition: transform .22s ease, visibility 0s .22s;
     }
-    body.sidebar-open .sidebar { transform: translateX(0); }
+    body.sidebar-open .sidebar { transform: translateX(0); visibility: visible; transition: transform .22s ease; }
     body.sidebar-open .backdrop { display: block; }
-    .brand .b-title { font-size: .95rem; }
-    .controls { gap: 7px; }
-    .ctl label { display: none; }
-    select { max-width: 130px; font-size: .78rem; }
-    .hero .duaa { font-size: 2rem; }
-    .hero h1 { font-size: 1.6rem; }
+
+    .topbar { gap: 10px; padding: 9px 14px; flex-wrap: wrap; }
+    .brand .b-title { font-size: .98rem; }
+    .brand .b-duaa { font-size: .98rem; }
+    /* Controls move onto their own full-width line, laid out as an even 2-column grid. */
+    .controls {
+      order: 3; flex-basis: 100%; width: 100%;
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 10px;
+    }
+    .ctl { flex-direction: column; align-items: stretch; gap: 3px; }
+    .ctl label { display: block; font-size: .68rem; }
+    .ctl select { width: 100%; max-width: none; }
+    /* The query-language control is the most consequential — give it the full row. */
+    .ctl:last-child { grid-column: 1 / -1; }
+
+    .thread { padding: 22px 16px 18px; }
+    .hero { min-height: calc(100dvh - 260px); }
+    .hero h1 { font-size: 1.65rem; }
+    .hero .duaa { font-size: 2.05rem; }
+    .hero .tagline { font-size: .96rem; }
+    .msg-user .bubble { max-width: 88%; }
+    .composer-wrap { padding: 12px 14px calc(10px + env(safe-area-inset-bottom)); }
   }
   @media (min-width: 861px) { .backdrop { display: none !important; } }
+
+  /* Small phones: tighten the composer so textarea + language + mic + send always fit one row. */
+  @media (max-width: 480px) {
+    .topbar { padding: 8px 12px; }
+    .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 8px; }
+    .thread { padding: 18px 13px 16px; }
+    .verse-card, .notice { padding: 15px 15px; }
+    .ar { font-size: 1.42rem; line-height: 2; }
+    /* 16px on all focusable inputs prevents iOS Safari's zoom-on-focus (a common cause of the
+       "screen distorts when I tap a field" complaint); compensate with tighter padding. */
+    select { font-size: 16px; padding: 9px 28px 9px 10px; }
+    .composer { gap: 6px; padding-left: 13px; }
+    .composer textarea { font-size: 16px; }
+    .mic-lang { max-width: 54px; padding: 8px 3px; font-size: .72rem; }
+    .composer-hint { font-size: .7rem; }
+    .hero .duaa { font-size: 1.8rem; }
+    .chips { gap: 8px; }
+    .chip { padding: 9px 14px; font-size: .84rem; }
+  }
+  /* Very narrow (≈320px): stack the query-language selector already handled; keep 2 cols but allow
+     a single column if even 2 would crowd. */
+  @media (max-width: 360px) {
+    .controls { grid-template-columns: 1fr; }
+    .ctl:last-child { grid-column: auto; }
+  }
 
   /* ---------- Reduced motion ---------- */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
     .caret { animation: none; opacity: 1; }
+    html { scroll-behavior: auto; }
   }
 </style>
 </head>
@@ -325,7 +440,7 @@
 
 <div class="app" id="app">
   <!-- Sidebar: conversation history -->
-  <nav class="sidebar" id="sidebar" aria-label="Conversation history">
+  <nav class="sidebar" id="sidebar" aria-label="Conversation history" tabindex="-1">
     <div class="sidebar-head">
       <button class="newchat" id="newChat" type="button">
         <span class="plus" aria-hidden="true">+</span> New conversation
@@ -347,6 +462,7 @@
         <span class="b-title">Quran AI Assistant</span>
         <span class="b-duaa" lang="ar" dir="rtl">رَبِّ زِدْنِي عِلْمًا</span>
       </div>
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode" aria-pressed="false">🌙</button>
       <div class="controls">
         <div class="ctl">
           <label for="searchMode">Mode</label>
@@ -375,12 +491,12 @@
         <div class="ctl">
           <label for="lang">Language</label>
           <select id="lang" aria-label="Query language">
+            <option value="auto" selected>Auto (all languages)</option>
             <option value="ar">Arabic</option>
             <option value="en">English</option>
             <option value="ur">Urdu</option>
           </select>
         </div>
-        <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode" aria-pressed="false">🌙</button>
       </div>
     </header>
 
@@ -394,6 +510,14 @@
       <form class="composer" id="composer">
         <label for="q" class="sr-only">Ask a question about the Quran</label>
         <textarea id="q" rows="1" placeholder="Ask a question, or type a reference like 112:1 …" autocomplete="off"></textarea>
+        <select class="mic-lang" id="micLang" aria-label="Voice input language" title="Voice input language" hidden>
+          <option value="en-US">EN</option>
+          <option value="ar-SA">ع</option>
+          <option value="ur-PK">اردو</option>
+        </select>
+        <button class="mic" id="mic" type="button" aria-label="Search by voice" aria-pressed="false" hidden>
+          <span id="micIcon" aria-hidden="true">🎙</span>
+        </button>
         <button class="send" id="send" type="submit" aria-label="Send question">
           <span id="sendIcon" aria-hidden="true">➤</span>
         </button>
@@ -414,6 +538,8 @@
   var composer = document.getElementById("composer");
   var sendBtn = document.getElementById("send");
   var sendIcon = document.getElementById("sendIcon");
+  var micBtn = document.getElementById("mic");
+  var micLangSel = document.getElementById("micLang");
   var searchModeSel = document.getElementById("searchMode");
   var modeSel = document.getElementById("mode");
   var langSel = document.getElementById("lang");
@@ -422,6 +548,7 @@
   var themeBtn = document.getElementById("themeBtn");
   var menuBtn = document.getElementById("menuBtn");
   var backdrop = document.getElementById("backdrop");
+  var sidebar = document.getElementById("sidebar");
   var historyEl = document.getElementById("history");
   var newChatBtn = document.getElementById("newChat");
   var srStatus = document.getElementById("srStatus");
@@ -437,6 +564,26 @@
   function load(key, dflt) { try { return JSON.parse(localStorage.getItem(key)) || dflt; } catch (e) { return dflt; } }
   function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
   function announce(msg) { srStatus.textContent = ""; setTimeout(function () { srStatus.textContent = msg; }, 30); }
+
+  // Language scope for a request. "auto" (the default) omits `lang` entirely, so the server
+  // detects the language and searches across ALL translations + the Arabic text; picking a
+  // specific language pins retrieval to it. Keep this in one place so both the streaming and
+  // non-streaming paths stay in sync.
+  function langScope() { return (langSel.value && langSel.value !== "auto") ? langSel.value : null; }
+  function askBody(query, sid) {
+    var b = { query: query, mode: modeSel.value, session_id: sid };
+    var lang = langScope();
+    if (lang) b.lang = lang;
+    return JSON.stringify(b);
+  }
+  // The concordance endpoint needs a concrete language; when scope is "auto", guess from the
+  // term's script (mirrors the server's heuristic: Arabic block, with Urdu-only letters -> ur).
+  function guessLang(text) {
+    if (/[؀-ۿ]/.test(text)) {
+      return /[ٹڈڑںھۃیےگچپژ]/.test(text) ? "ur" : "ar";
+    }
+    return "en";
+  }
 
   // ---------- Theme ----------
   function applyTheme(theme) {
@@ -455,8 +602,23 @@
 
   // ---------- Sidebar (mobile drawer) ----------
   function isMobile() { return window.matchMedia("(max-width: 860px)").matches; }
-  function openSidebar() { document.body.classList.add("sidebar-open"); menuBtn.setAttribute("aria-expanded", "true"); }
-  function closeSidebar() { document.body.classList.remove("sidebar-open"); if (isMobile()) menuBtn.setAttribute("aria-expanded", "false"); }
+  function openSidebar() {
+    document.body.classList.add("sidebar-open");
+    menuBtn.setAttribute("aria-expanded", "true");
+    sidebar.setAttribute("aria-modal", "true");
+    sidebar.setAttribute("role", "dialog");
+    // Move focus into the drawer so keyboard/SR users land inside it.
+    (newChatBtn || sidebar).focus();
+  }
+  function closeSidebar(restoreFocus) {
+    var wasOpen = document.body.classList.contains("sidebar-open");
+    document.body.classList.remove("sidebar-open");
+    sidebar.removeAttribute("aria-modal");
+    sidebar.removeAttribute("role");
+    if (isMobile()) menuBtn.setAttribute("aria-expanded", "false");
+    // Return focus to the toggle after a user-driven close (not resize/programmatic).
+    if (wasOpen && restoreFocus !== false && isMobile()) menuBtn.focus();
+  }
   menuBtn.addEventListener("click", function () {
     if (isMobile()) {
       document.body.classList.contains("sidebar-open") ? closeSidebar() : openSidebar();
@@ -465,8 +627,17 @@
       menuBtn.setAttribute("aria-expanded", document.getElementById("app").classList.contains("sidebar-collapsed") ? "false" : "true");
     }
   });
-  backdrop.addEventListener("click", closeSidebar);
+  backdrop.addEventListener("click", function () { closeSidebar(); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && document.body.classList.contains("sidebar-open")) closeSidebar(); });
+  // Focus trap: while the mobile drawer is open, keep Tab within it.
+  sidebar.addEventListener("keydown", function (e) {
+    if (e.key !== "Tab" || !document.body.classList.contains("sidebar-open") || !isMobile()) return;
+    var focusables = sidebar.querySelectorAll("button, a[href], select, textarea, input, [tabindex]:not([tabindex='-1'])");
+    if (!focusables.length) return;
+    var first = focusables[0], last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
 
   // ---------- Escaping / highlighting (ported) ----------
   function esc(s) {
@@ -616,6 +787,7 @@
   function setBusy(state) {
     busy = state;
     sendBtn.disabled = state;
+    if (micBtn) micBtn.disabled = state;
     sendIcon.outerHTML = state
       ? '<span class="spin" id="sendIcon" aria-hidden="true"></span>'
       : '<span id="sendIcon" aria-hidden="true">➤</span>';
@@ -663,7 +835,7 @@
     var answerEl = shell.querySelector(".answer");
     var thinkingEl = shell.querySelector(".thinking");
     var transEnIdx = transEnSel.value, transUrIdx = transUrSel.value;
-    var body = JSON.stringify({ query: query, mode: modeSel.value, session_id: sid });
+    var body = askBody(query, sid);
     var answerText = "", gotToken = false, meta = null, doneData = null, buffer = "";
 
     fetch("/v1/ask/stream", { method: "POST", headers: { "content-type": "application/json" }, body: body })
@@ -711,7 +883,7 @@
   // Non-streaming path (reduced-motion, or streaming unavailable)
   function askOnce(query, sid, shell) {
     var transEnIdx = transEnSel.value, transUrIdx = transUrSel.value;
-    var body = JSON.stringify({ query: query, mode: modeSel.value, session_id: sid });
+    var body = askBody(query, sid);
     fetch("/v1/ask", { method: "POST", headers: { "content-type": "application/json" }, body: body })
       .then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error("Server error " + r.status + (t ? ": " + t : "")); }); return r.json(); })
       .then(function (data) {
@@ -778,7 +950,7 @@
     var shell = addAssistantShell();
     var th = shell.querySelector(".thinking");
     var transEnIdx = transEnSel.value, transUrIdx = transUrSel.value;
-    fetch("/v1/wordsearch", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ term: term, lang: langSel.value }) })
+    fetch("/v1/wordsearch", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ term: term, lang: langScope() || guessLang(term) }) })
       .then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error("Server error " + r.status + (t ? ": " + t : "")); }); return r.json(); })
       .then(function (data) {
         if (th) th.remove();
@@ -896,7 +1068,7 @@
     thread.innerHTML = "";
     showHero();
     renderHistory();
-    if (isMobile()) closeSidebar();
+    if (isMobile()) closeSidebar(false);  // composer gets focus below
     q.focus();
   }
   newChatBtn.addEventListener("click", newConversation);
@@ -939,6 +1111,119 @@
   q.addEventListener("keydown", function (e) {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); composer.requestSubmit ? composer.requestSubmit() : composer.dispatchEvent(new Event("submit", { cancelable: true })); }
   });
+
+  // ---------- Voice search (Web Speech API — fully client-side) ----------
+  // Speech-to-text is a pure INPUT convenience: it fills the composer with text, then the same
+  // grounded pipeline runs. It never touches retrieval, generation, or the guardrails. Uses the
+  // browser-native SpeechRecognition (no backend / no network of ours), so it degrades gracefully
+  // where unsupported (Firefox, some mobile) by staying hidden.
+  (function initVoiceSearch() {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;  // unsupported browser: leave the mic button hidden
+
+    micBtn.hidden = false;
+    micLangSel.hidden = false;
+
+    // The Web Speech API CANNOT auto-detect the spoken language — `recognition.lang` must be set
+    // before listening, and a wrong locale yields empty/garbled results. The search selector's
+    // "auto" scope has no valid speech locale, so voice input gets its OWN language picker
+    // (micLangSel holds real BCP-47 values). We seed it from the search language when that's a
+    // concrete choice, otherwise from the browser, and remember the user's pick across reloads.
+    var MIC_LANG_KEY = "quran.micLang";
+    (function seedMicLang() {
+      var saved = null;
+      try { saved = localStorage.getItem(MIC_LANG_KEY); } catch (e) {}
+      var fromSearch = { ar: "ar-SA", en: "en-US", ur: "ur-PK" }[langSel.value];
+      var initial = saved || fromSearch ||
+        (/^ur\b/i.test(navigator.language || "") ? "ur-PK"
+         : /^ar\b/i.test(navigator.language || "") ? "ar-SA"
+         : "en-US");
+      for (var i = 0; i < micLangSel.options.length; i++) {
+        if (micLangSel.options[i].value === initial) { micLangSel.selectedIndex = i; break; }
+      }
+    })();
+
+    function recogLocale() { return micLangSel.value || "en-US"; }
+
+    var recog = null;
+    var recording = false;
+    var baseText = "";   // whatever was already typed before we started listening
+
+    function setRecording(state) {
+      recording = state;
+      micBtn.setAttribute("aria-pressed", state ? "true" : "false");
+      micBtn.setAttribute("aria-label", state ? "Stop voice search" : "Search by voice");
+    }
+
+    function stop() { if (recog) { try { recog.stop(); } catch (e) {} } }
+
+    function start() {
+      if (busy) return;  // don't capture voice while a request is in flight
+      recog = new SR();
+      recog.lang = recogLocale();
+      recog.interimResults = true;
+      recog.continuous = false;
+      recog.maxAlternatives = 1;
+      baseText = q.value ? q.value.replace(/\s+$/, "") + " " : "";
+
+      var langLabel = micLangSel.options[micLangSel.selectedIndex].text;
+      recog.onstart = function () { setRecording(true); announce("Listening (" + langLabel + ")…"); };
+
+      recog.onresult = function (e) {
+        var finalText = "", interim = "";
+        for (var i = e.resultIndex; i < e.results.length; i++) {
+          var chunk = e.results[i][0].transcript;
+          if (e.results[i].isFinal) finalText += chunk; else interim += chunk;
+        }
+        q.value = baseText + finalText + interim;
+        autoGrow();
+        if (finalText) {
+          baseText = q.value.replace(/\s+$/, "") + " ";
+          var toSend = q.value.trim();
+          stop();
+          if (toSend) {
+            announce("Heard: " + toSend);
+            q.value = ""; autoGrow();
+            submit(toSend);
+          }
+        }
+      };
+
+      recog.onerror = function (e) {
+        var msg = "Voice search error.";
+        if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+          msg = "Microphone access denied. Enable it in your browser to use voice search.";
+        } else if (e.error === "no-speech") {
+          msg = "Didn't catch that — check the voice language is set correctly, then try again.";
+        } else if (e.error === "audio-capture") {
+          msg = "No microphone found.";
+        } else if (e.error === "language-not-supported") {
+          msg = langLabel + " isn't available for voice input in this browser. Try Chrome, or pick another language.";
+        } else if (e.error === "network") {
+          msg = "Voice recognition needs a network connection.";
+        } else if (e.error === "aborted") {
+          msg = "";  // user-initiated stop; stay quiet
+        }
+        if (msg) announce(msg);
+      };
+
+      recog.onend = function () { setRecording(false); recog = null; q.focus(); };
+
+      try { recog.start(); }
+      catch (err) { setRecording(false); recog = null; announce("Couldn't start voice search."); }
+    }
+
+    micBtn.addEventListener("click", function () {
+      if (recording) { stop(); announce("Stopped listening."); }
+      else start();
+    });
+
+    // Changing the voice language restarts a fresh recognizer next tap; remember the choice.
+    micLangSel.addEventListener("change", function () {
+      if (recording) stop();
+      try { localStorage.setItem(MIC_LANG_KEY, micLangSel.value); } catch (e) {}
+    });
+  })();
 
   // ---------- Verse action delegation (copy / bookmark / share / listen) ----------
   document.addEventListener("click", function (e) {
@@ -985,9 +1270,36 @@
   }
 
   // ---------- Init ----------
+  // Keep the menu button's aria-expanded honest: on mobile the drawer starts CLOSED, on desktop
+  // the sidebar starts OPEN. Re-sync when the viewport crosses the breakpoint so screen-reader
+  // and keyboard users always hear the true state.
+  function syncMenuState() {
+    if (isMobile()) {
+      menuBtn.setAttribute("aria-expanded", document.body.classList.contains("sidebar-open") ? "true" : "false");
+    } else {
+      menuBtn.setAttribute("aria-expanded", document.getElementById("app").classList.contains("sidebar-collapsed") ? "false" : "true");
+    }
+  }
+  var _rzTimer;
+  window.addEventListener("resize", function () {
+    clearTimeout(_rzTimer);
+    _rzTimer = setTimeout(function () {
+      if (isMobile()) {
+        // Entering mobile: the desktop "collapsed" state is meaningless here and its 0-width grid
+        // rule would fight the drawer, so drop it. The drawer starts closed.
+        document.getElementById("app").classList.remove("sidebar-collapsed");
+      } else if (document.body.classList.contains("sidebar-open")) {
+        // Crossing to desktop: close the drawer and clear its dialog ARIA without stealing focus.
+        closeSidebar(false);
+      }
+      syncMenuState();
+    }, 150);
+  });
+
   renderHistory();
   showHero();
-  q.focus();
+  syncMenuState();
+  if (!isMobile()) q.focus();  // avoid forcing the mobile keyboard open on load
 })();
 </script>
 </body>
